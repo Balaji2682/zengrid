@@ -1,0 +1,273 @@
+/**
+ * ZenGrid Core Styles (Community Edition)
+ * Minimal base styles for the grid
+ */
+
+:root {
+  /* Grid dimensions */
+  --zg-row-height: 30px;
+  --zg-header-height: 35px;
+  --zg-col-width: 100px;
+
+  /* Colors */
+  --zg-bg-color: #ffffff;
+  --zg-text-color: #000000;
+  --zg-border-color: #d0d0d0;
+  --zg-header-bg: #f5f5f5;
+  --zg-header-text: #333333;
+  --zg-selected-bg: #e3f2fd;
+  --zg-selected-border: #1976d2;
+  --zg-focus-ring: #1976d2;
+  --zg-hover-bg: #f0f0f0;
+
+  /* Spacing */
+  --zg-cell-padding: 4px 8px;
+  --zg-border-width: 1px;
+
+  /* Typography */
+  --zg-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --zg-font-size: 14px;
+  --zg-line-height: 1.5;
+}
+
+/* Grid container */
+.zg-grid {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--zg-bg-color);
+  font-family: var(--zg-font-family);
+  font-size: var(--zg-font-size);
+  line-height: var(--zg-line-height);
+  color: var(--zg-text-color);
+}
+
+/* Viewport (scrollable area) */
+.zg-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  will-change: scroll-position;
+}
+
+/* Scroll container (defines virtual scroll area) */
+.zg-scroll-container {
+  position: relative;
+  pointer-events: none;
+}
+
+/* Cell container (holds visible cells) */
+.zg-cells {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: auto;
+}
+
+/* Individual cell */
+.zg-cell {
+  position: absolute;
+  box-sizing: border-box;
+  padding: var(--zg-cell-padding);
+  border-right: var(--zg-border-width) solid var(--zg-border-color);
+  border-bottom: var(--zg-border-width) solid var(--zg-border-color);
+  background: var(--zg-bg-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.zg-cell:hover {
+  background: var(--zg-hover-bg);
+}
+
+/* Selected cell */
+.zg-cell-selected {
+  background: var(--zg-selected-bg);
+  border: 2px solid var(--zg-selected-border);
+  z-index: 1;
+}
+
+/* Active/focused cell */
+.zg-cell-active {
+  outline: 2px solid var(--zg-focus-ring);
+  outline-offset: -2px;
+  z-index: 2;
+}
+
+/* Editing cell */
+.zg-cell-editing {
+  outline: 2px solid var(--zg-focus-ring);
+  background: var(--zg-bg-color);
+  z-index: 3;
+}
+
+.zg-cell-editing input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  padding: 0;
+  font: inherit;
+  background: transparent;
+}
+
+/* Headers */
+.zg-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--zg-header-bg);
+  color: var(--zg-header-text);
+  font-weight: 600;
+  border-bottom: 2px solid var(--zg-border-color);
+}
+
+.zg-header-cell {
+  position: absolute;
+  box-sizing: border-box;
+  padding: var(--zg-cell-padding);
+  border-right: var(--zg-border-width) solid var(--zg-border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.zg-header-cell:hover {
+  background: var(--zg-hover-bg);
+}
+
+/* Selection overlay */
+.zg-selection-overlay {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid var(--zg-selected-border);
+  background: transparent;
+  z-index: 5;
+}
+
+/* Focus ring (separate element for virtual scrolling) */
+.zg-focus-ring {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid var(--zg-focus-ring);
+  box-shadow: inset 0 0 0 1px #ffffff;
+  z-index: 6;
+}
+
+/* Loading indicator */
+.zg-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+}
+
+/* Accessibility - screen reader only */
+.zg-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* RTL support */
+.zg-grid[dir='rtl'] {
+  direction: rtl;
+}
+
+.zg-grid[dir='rtl'] .zg-cell {
+  border-right: none;
+  border-left: var(--zg-border-width) solid var(--zg-border-color);
+}
+
+/* Dark theme */
+.zg-grid.zg-theme-dark {
+  --zg-bg-color: #1e1e1e;
+  --zg-text-color: #ffffff;
+  --zg-border-color: #3e3e3e;
+  --zg-header-bg: #2d2d2d;
+  --zg-header-text: #ffffff;
+  --zg-selected-bg: #1a3a52;
+  --zg-hover-bg: #2d2d2d;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .zg-grid {
+    --zg-border-color: #000000;
+    --zg-selected-border: #000000;
+  }
+}
+
+/* ===== Cell Renderers ===== */
+
+/* Number renderer */
+.zg-cell-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.zg-cell-negative {
+  color: #d32f2f;
+}
+
+/* Image renderer */
+.zg-cell-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+}
+
+.zg-cell-image__img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Advanced cell renderer */
+.zg-cell-advanced {
+  overflow: hidden;
+}
+
+.zg-cell-advanced__icon {
+  flex-shrink: 0;
+}
+
+.zg-cell-advanced__text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zg-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75em;
+  font-weight: 500;
+  background: var(--zg-badge-bg, #e0e0e0);
+  color: var(--zg-badge-color, #333);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .zg-grid * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

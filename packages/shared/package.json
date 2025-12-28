@@ -1,0 +1,48 @@
+{
+  "name": "@zengrid/shared",
+  "version": "0.1.0",
+  "description": "Shared algorithms and data structures for ZenGrid",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.esm.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs"
+    },
+    "./algorithms/*": {
+      "types": "./dist/algorithms/*/index.d.ts",
+      "import": "./dist/algorithms/*/index.esm.js",
+      "require": "./dist/algorithms/*/index.cjs"
+    },
+    "./data-structures/*": {
+      "types": "./dist/data-structures/*/index.d.ts",
+      "import": "./dist/data-structures/*/index.esm.js",
+      "require": "./dist/data-structures/*/index.cjs"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.esm.js",
+      "require": "./dist/types/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "algorithms",
+    "data-structures",
+    "grid",
+    "utilities"
+  ],
+  "author": "ZenGrid Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/zengrid.git",
+    "directory": "packages/shared"
+  }
+}

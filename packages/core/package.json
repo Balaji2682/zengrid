@@ -1,0 +1,44 @@
+{
+  "name": "@zengrid/core",
+  "version": "0.1.0",
+  "description": "ZenGrid Core - High-performance data grid library (Community Edition)",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.esm.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "grid",
+    "data-grid",
+    "table",
+    "spreadsheet",
+    "virtual-scroll",
+    "datagrid",
+    "angular",
+    "react",
+    "vue"
+  ],
+  "author": "ZenGrid Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/zengrid.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/zengrid/issues"
+  },
+  "homepage": "https://zengrid.dev",
+  "peerDependencies": {},
+  "devDependencies": {}
+}

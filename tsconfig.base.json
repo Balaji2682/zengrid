@@ -1,0 +1,43 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": true,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@zengrid/core": ["packages/core/src/index.ts"],
+      "@zengrid/pro": ["packages/pro/src/index.ts"],
+      "@zengrid/enterprise": ["packages/enterprise/src/index.ts"],
+      "@zengrid/license": ["packages/license/src/index.ts"],
+      "@zengrid/shared": ["packages/shared/src/index.ts"],
+      "@zengrid/shared/algorithms/*": ["packages/shared/src/algorithms/*"],
+      "@zengrid/shared/data-structures/*": ["packages/shared/src/data-structures/*"],
+      "@zengrid/shared/types": ["packages/shared/src/types/index.ts"]
+    },
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "exclude": ["node_modules", "tmp"]
+}

@@ -1,0 +1,43 @@
+{
+  "name": "shared",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/shared/src",
+  "projectType": "library",
+  "tags": ["type:lib", "scope:shared"],
+  "targets": {
+    "build": {
+      "executor": "@nx/rollup:rollup",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/shared",
+        "tsConfig": "packages/shared/tsconfig.json",
+        "main": "packages/shared/src/index.ts",
+        "generateExportsField": true,
+        "format": ["cjs", "esm"],
+        "assets": [
+          {
+            "glob": "packages/shared/*.md",
+            "input": ".",
+            "output": "."
+          }
+        ],
+        "compiler": "tsc",
+        "external": []
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/shared/jest.config.ts",
+        "passWithNoTests": true
+      },
+      "configurations": {
+        "ci": {
+          "ci": true,
+          "codeCoverage": true
+        }
+      }
+    }
+  }
+}
