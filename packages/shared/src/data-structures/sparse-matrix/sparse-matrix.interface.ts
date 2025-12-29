@@ -28,7 +28,7 @@ export interface ReadonlySparseMatrix<T> {
    * Get all values in a row
    * @param row - Row index
    * @returns Map of column index to value
-   * @complexity O(k) where k = number of values in row
+   * @complexity O(1) - direct map lookup
    */
   getRow(row: number): ReadonlyMap<number, T>;
 
@@ -36,7 +36,7 @@ export interface ReadonlySparseMatrix<T> {
    * Get all values in a column
    * @param col - Column index
    * @returns Map of row index to value
-   * @complexity O(n) where n = total number of values (needs full scan)
+   * @complexity O(r) where r = number of rows with data (not total cells)
    */
   getColumn(col: number): ReadonlyMap<number, T>;
 
@@ -91,7 +91,7 @@ export interface SparseMatrix<T> extends ReadonlySparseMatrix<T> {
    * Delete entire row
    * @param row - Row index
    * @returns Number of cells deleted
-   * @complexity O(k) where k = number of values in row
+   * @complexity O(1) - direct map deletion
    */
   deleteRow(row: number): number;
 
@@ -99,7 +99,7 @@ export interface SparseMatrix<T> extends ReadonlySparseMatrix<T> {
    * Delete entire column
    * @param col - Column index
    * @returns Number of cells deleted
-   * @complexity O(n) where n = total number of values
+   * @complexity O(r) where r = number of rows with data
    */
   deleteColumn(col: number): number;
 }
@@ -109,14 +109,9 @@ export interface SparseMatrix<T> extends ReadonlySparseMatrix<T> {
  */
 export interface SparseMatrixOptions {
   /**
-   * Initial capacity (number of expected non-empty cells)
+   * Initial capacity (number of expected rows with data)
+   * Hint for Map pre-allocation to reduce resizing
    * @default 16
    */
   initialCapacity?: number;
-
-  /**
-   * Custom hash function for generating keys from (row, col)
-   * @default (row, col) => `${row}:${col}`
-   */
-  hashFunction?: (row: number, col: number) => string;
 }

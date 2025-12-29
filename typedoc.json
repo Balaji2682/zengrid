@@ -1,0 +1,55 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "packages/core/src/index.ts",
+    "packages/shared/src/index.ts"
+  ],
+  "entryPointStrategy": "expand",
+  "out": "docs/api",
+  "name": "ZenGrid API Documentation",
+  "includeVersion": true,
+  "readme": "README.md",
+  "plugin": [],
+  "theme": "default",
+  "categorizeByGroup": true,
+  "defaultCategory": "Other",
+  "categoryOrder": [
+    "Grid",
+    "Rendering",
+    "Data Structures",
+    "Algorithms",
+    "Events",
+    "Editing",
+    "Selection",
+    "Accessibility",
+    "Keyboard",
+    "Features",
+    "Internationalization",
+    "Touch",
+    "Utilities",
+    "*"
+  ],
+  "sort": ["source-order"],
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.perf.spec.ts",
+    "**/*.test.ts",
+    "**/node_modules/**"
+  ],
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeInternal": true,
+  "hideGenerator": false,
+  "searchInComments": true,
+  "cleanOutputDir": true,
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "inherited": true,
+    "external": false
+  },
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  }
+}

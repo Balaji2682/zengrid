@@ -5,11 +5,22 @@
   "scripts": {
     "build": "nx run-many -t build",
     "build:core": "nx build core",
+    "build:shared": "nx build shared",
     "test": "nx run-many -t test",
     "test:core": "nx test core",
+    "test:shared": "nx test shared",
     "test:watch": "nx test core --watch",
     "test:coverage": "nx test core --coverage",
-    "lint": "nx run-many -t lint"
+    "test:perf": "nx test packages/core/test/performance/benchmarks.spec.ts",
+    "lint": "nx run-many -t lint",
+    "docs:api": "typedoc",
+    "docs:serve": "cd docs/api && python3 -m http.server 8000",
+    "demo": "cd apps/demo && pnpm dev",
+    "demo:build": "cd apps/demo && pnpm build",
+    "clean": "nx reset && rm -rf dist node_modules/.cache",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"packages/**/*.{ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"packages/**/*.{ts,tsx,json,md}\""
   },
   "keywords": [
     "grid",
@@ -36,8 +47,11 @@
     "jest-environment-jsdom": "^30.2.0",
     "nx": "^22.3.3",
     "postcss": "^8.5.6",
+    "prettier": "^3.1.0",
     "rollup-plugin-postcss": "^4.0.2",
     "ts-jest": "^29.4.6",
-    "typescript": "^5.9.3"
+    "typedoc": "^0.25.0",
+    "typescript": "^5.9.3",
+    "vite": "^5.0.0"
   }
 }

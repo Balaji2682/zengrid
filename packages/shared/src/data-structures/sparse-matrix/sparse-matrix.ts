@@ -4,10 +4,15 @@ import type {
 } from './sparse-matrix.interface';
 
 /**
- * SparseMatrix implementation using HashMap
+ * SparseMatrix implementation using Map of Maps
  *
  * Memory-efficient storage for large grids where most cells are empty.
- * Uses a Map with string keys generated from (row, col) coordinates.
+ * Uses nested Maps with numeric keys for optimal performance.
+ *
+ * Structure: Map<row, Map<col, value>>
+ * - Row operations are O(1) - direct map lookup
+ * - Column operations are O(r) where r = rows with data (not total cells)
+ * - Memory efficient: only allocates maps for rows that have data
  *
  * @example
  * ```typescript
@@ -19,27 +24,24 @@ import type {
  * ```
  */
 export class SparseMatrix<T> implements ISparseMatrix<T> {
-  private data: Map<string, T>;
-  private hashFn: (row: number, col: number) => string;
+  private rows: Map<number, Map<number, T>>;
+  private cellCount: number;
 
-  constructor(options: SparseMatrixOptions = {}) {
-    this.data = new Map<string, T>();
-    this.hashFn = options.hashFunction ?? this.defaultHash;
-  }
-
-  /**
-   * Default hash function: concatenate row and column with ':'
-   */
-  private defaultHash(row: number, col: number): string {
-    return `${row}:${col}`;
+  constructor(_options: SparseMatrixOptions = {}) {
+    // Note: initialCapacity hint is not used in Map of Maps implementation
+    // Maps in JavaScript auto-resize efficiently
+    this.rows = new Map<number, Map<number, T>>();
+    this.cellCount = 0;
   }
 
   get(row: number, col: number): T | undefined {
-    return this.data.get(this.hashFn(row, col));
+    const rowMap = this.rows.get(row);
+    return rowMap?.get(col);
   }
 
   has(row: number, col: number): boolean {
-    return this.data.has(this.hashFn(row, col));
+    const rowMap = this.rows.get(row);
+    return rowMap?.has(col) ?? false;
   }
 
   set(row: number, col: number, value: T): void {
@@ -48,40 +50,61 @@ export class SparseMatrix<T> implements ISparseMatrix<T> {
       this.delete(row, col);
       return;
     }
-    this.data.set(this.hashFn(row, col), value);
+
+    // Get or create row map
+    let rowMap = this.rows.get(row);
+    if (!rowMap) {
+      rowMap = new Map<number, T>();
+      this.rows.set(row, rowMap);
+    }
+
+    // Track if this is a new cell
+    const isNewCell = !rowMap.has(col);
+    rowMap.set(col, value);
+
+    if (isNewCell) {
+      this.cellCount++;
+    }
   }
 
   delete(row: number, col: number): boolean {
-    return this.data.delete(this.hashFn(row, col));
-  }
+    const rowMap = this.rows.get(row);
+    if (!rowMap) {
+      return false;
+    }
 
-  clear(): void {
-    this.data.clear();
-  }
+    const deleted = rowMap.delete(col);
 
-  getRow(row: number): ReadonlyMap<number, T> {
-    const rowData = new Map<number, T>();
-
-    // Scan all entries for matching row
-    // This is why we need a better data structure for row-wise operations
-    for (const [key, value] of this.data.entries()) {
-      const [r, c] = this.parseKey(key);
-      if (r === row) {
-        rowData.set(c, value);
+    // Remove row map if empty
+    if (deleted) {
+      this.cellCount--;
+      if (rowMap.size === 0) {
+        this.rows.delete(row);
       }
     }
 
-    return rowData;
+    return deleted;
+  }
+
+  clear(): void {
+    this.rows.clear();
+    this.cellCount = 0;
+  }
+
+  getRow(row: number): ReadonlyMap<number, T> {
+    // O(1) - direct map lookup!
+    const rowMap = this.rows.get(row);
+    return rowMap ?? new Map<number, T>();
   }
 
   getColumn(col: number): ReadonlyMap<number, T> {
+    // O(r) where r = rows with data (not total cells!)
     const colData = new Map<number, T>();
 
-    // Scan all entries for matching column
-    for (const [key, value] of this.data.entries()) {
-      const [r, c] = this.parseKey(key);
-      if (c === col) {
-        colData.set(r, value);
+    for (const [rowIndex, rowMap] of this.rows.entries()) {
+      const value = rowMap.get(col);
+      if (value !== undefined) {
+        colData.set(rowIndex, value);
       }
     }
 
@@ -95,57 +118,54 @@ export class SparseMatrix<T> implements ISparseMatrix<T> {
   }
 
   deleteRow(row: number): number {
-    const keysToDelete: string[] = [];
-
-    for (const key of this.data.keys()) {
-      const [r] = this.parseKey(key);
-      if (r === row) {
-        keysToDelete.push(key);
-      }
+    // O(1) - direct map deletion!
+    const rowMap = this.rows.get(row);
+    if (!rowMap) {
+      return 0;
     }
 
-    for (const key of keysToDelete) {
-      this.data.delete(key);
-    }
+    const deletedCount = rowMap.size;
+    this.rows.delete(row);
+    this.cellCount -= deletedCount;
 
-    return keysToDelete.length;
+    return deletedCount;
   }
 
   deleteColumn(col: number): number {
-    const keysToDelete: string[] = [];
+    // O(r) where r = rows with data
+    let deletedCount = 0;
+    const rowsToDelete: number[] = [];
 
-    for (const key of this.data.keys()) {
-      const [, c] = this.parseKey(key);
-      if (c === col) {
-        keysToDelete.push(key);
+    for (const [rowIndex, rowMap] of this.rows.entries()) {
+      if (rowMap.delete(col)) {
+        deletedCount++;
+
+        // Mark row for deletion if now empty
+        if (rowMap.size === 0) {
+          rowsToDelete.push(rowIndex);
+        }
       }
     }
 
-    for (const key of keysToDelete) {
-      this.data.delete(key);
+    // Clean up empty rows
+    for (const rowIndex of rowsToDelete) {
+      this.rows.delete(rowIndex);
     }
 
-    return keysToDelete.length;
+    this.cellCount -= deletedCount;
+    return deletedCount;
   }
 
   get size(): number {
-    return this.data.size;
+    return this.cellCount;
   }
 
   *[Symbol.iterator](): IterableIterator<[number, number, T]> {
-    for (const [key, value] of this.data.entries()) {
-      const [row, col] = this.parseKey(key);
-      yield [row, col, value];
+    for (const [rowIndex, rowMap] of this.rows.entries()) {
+      for (const [colIndex, value] of rowMap.entries()) {
+        yield [rowIndex, colIndex, value];
+      }
     }
-  }
-
-  /**
-   * Parse key back to (row, col) coordinates
-   * Only works with default hash function
-   */
-  private parseKey(key: string): [number, number] {
-    const [row, col] = key.split(':').map(Number);
-    return [row, col];
   }
 
   /**

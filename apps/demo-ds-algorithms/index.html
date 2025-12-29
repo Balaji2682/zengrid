@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZenGrid - Data Structures & Algorithms Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .demo-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .demo-section h2 {
+      color: #2c3e50;
+      margin-bottom: 15px;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .demo-section h2 .badge {
+      background: #3498db;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: normal;
+    }
+
+    .demo-content {
+      display: flex;
+      gap: 20px;
+    }
+
+    .demo-controls {
+      flex: 0 0 350px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .demo-result {
+      flex: 1;
+      background: #f8f9fa;
+      border-radius: 4px;
+      padding: 15px;
+      min-height: 150px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    input, button, select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #3498db;
+    }
+
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #2980b9;
+    }
+
+    button:disabled {
+      background: #bdc3c7;
+      cursor: not-allowed;
+    }
+
+    .result-title {
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 10px;
+    }
+
+    .result-content {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #333;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .grid-container {
+      width: 100%;
+      height: 400px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      overflow: hidden;
+      background: white;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      opacity: 0.9;
+      text-transform: uppercase;
+    }
+
+    .success {
+      color: #27ae60;
+      font-weight: 600;
+    }
+
+    .error {
+      color: #e74c3c;
+      font-weight: 600;
+    }
+
+    .info {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .info.warning {
+      background: #fff3cd;
+      border-left: 4px solid #ff9800;
+    }
+
+    .suggestion-list {
+      list-style: none;
+      margin-top: 10px;
+    }
+
+    .suggestion-list li {
+      padding: 8px;
+      background: #ecf0f1;
+      margin-bottom: 4px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .suggestion-list li:hover {
+      background: #3498db;
+      color: white;
+    }
+
+    .performance-badge {
+      background: #27ae60;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      display: inline-block;
+      margin-left: 10px;
+    }
+
+    #hit-test-output {
+      background: #2c3e50;
+      color: #ecf0f1;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: monospace;
+      min-height: 100px;
+    }
+
+    .click-indicator {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: #e74c3c;
+      border-radius: 50%;
+      border: 2px solid white;
+      pointer-events: none;
+      animation: pulse 0.5s;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+
+    .dependency-graph {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 4px;
+    }
+
+    .dependency-node {
+      padding: 10px;
+      background: white;
+      border: 2px solid #3498db;
+      border-radius: 4px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .dependency-node.calculated {
+      background: #27ae60;
+      color: white;
+      border-color: #27ae60;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 ZenGrid - Data Structures & Algorithms Demo</h1>
+    <p class="subtitle">Interactive demonstration of all implemented data structures and algorithms</p>
+
+    <!-- Trie Demo -->
+    <div class="demo-section">
+      <h2>
+        🌲 Trie: Filter Autocomplete
+        <span class="badge">O(m + k) lookup</span>
+      </h2>
+      <div class="demo-content">
+        <div class="demo-controls">
+          <div class="control-group">
+            <label>Type to get autocomplete suggestions:</label>
+            <input type="text" id="trie-input" placeholder="Type 'app' or 'sam'..." />
+          </div>
+          <button id="index-column-btn">Index Sample Data</button>
+          <div class="info">
+            💡 The Trie indexes 10,000 product names for instant autocomplete.
+            Try typing "app", "sam", or "mic" to see suggestions.
+          </div>
+        </div>
+        <div class="demo-result">
+          <div class="result-title">Autocomplete Results:</div>
+          <ul class="suggestion-list" id="trie-suggestions"></ul>
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-value" id="trie-indexed">0</div>
+              <div class="stat-label">Unique Values</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="trie-time">0ms</div>
+              <div class="stat-label">Query Time</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RTree Demo -->
+    <div class="demo-section">
+      <h2>
+        📍 RTree: Spatial Hit Testing
+        <span class="badge">O(log n) search</span>
+      </h2>
+      <div class="demo-content">
+        <div class="demo-controls">
+          <div class="control-group">
+            <label>Click anywhere on the grid:</label>
+            <button id="rtree-init">Initialize Grid (100x100 cells)</button>
+          </div>
+          <div class="info">
+            💡 The RTree spatial index allows O(log n) hit testing instead of O(n) linear search.
+            Click on the grid to see which cell was found instantly!
+          </div>
+        </div>
+        <div class="demo-result">
+          <div class="result-title">Click Detection Output:</div>
+          <div id="hit-test-output">Grid not initialized. Click "Initialize Grid" button.</div>
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-value" id="rtree-cells">0</div>
+              <div class="stat-label">Indexed Cells</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="rtree-hits">0</div>
+              <div class="stat-label">Clicks Detected</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DependencyGraph Demo -->
+    <div class="demo-section">
+      <h2>
+        🔗 DependencyGraph: Formula Dependencies
+        <span class="badge">Topological Sort</span>
+      </h2>
+      <div class="demo-content">
+        <div class="demo-controls">
+          <div class="control-group">
+            <label>Add Formula:</label>
+            <select id="formula-select">
+              <option value="C1=A1+B1">C1 = A1 + B1</option>
+              <option value="D1=C1*2">D1 = C1 * 2</option>
+              <option value="E1=D1+10">E1 = D1 + 10</option>
+              <option value="F1=E1*A1">F1 = E1 * A1</option>
+            </select>
+            <button id="add-formula-btn">Add Formula</button>
+          </div>
+          <button id="calculate-order-btn">Get Calculation Order</button>
+          <button id="test-cycle-btn">Test Circular Reference (A1=F1)</button>
+          <div class="info">
+            💡 DependencyGraph detects circular references and determines correct calculation order.
+          </div>
+        </div>
+        <div class="demo-result">
+          <div class="result-title">Formula Graph:</div>
+          <div class="result-content" id="formula-graph"></div>
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-value" id="formula-count">0</div>
+              <div class="stat-label">Formulas</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="dependency-count">0</div>
+              <div class="stat-label">Dependencies</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BloomFilter Demo -->
+    <div class="demo-section">
+      <h2>
+        🔍 Bloom Filter: Fast Membership Test
+        <span class="badge">Probabilistic</span>
+      </h2>
+      <div class="demo-content">
+        <div class="demo-controls">
+          <div class="control-group">
+            <label>Search for EXACT product name:</label>
+            <input type="text" id="bloom-input" placeholder="Try: Apple iPhone 14, xyz123, Samsung Tab S8" />
+          </div>
+          <button id="bloom-check-btn">Check with Bloom Filter</button>
+          <button id="bloom-scan-btn">Check with Full Scan</button>
+          <button id="bloom-samples-btn" style="background: #95a5a6;">Show Sample Products</button>
+          <div class="info warning" id="bloom-info">
+            ⚠️ Please scroll up and click <strong>"Index Sample Data"</strong> in the Trie demo first. The same button indexes both Trie and Bloom Filter! ☝️
+          </div>
+        </div>
+        <div class="demo-result">
+          <div class="result-title">Search Results:</div>
+          <div class="result-content" id="bloom-result"></div>
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-value" id="bloom-time">0ms</div>
+              <div class="stat-label">Bloom Filter Time</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="scan-time">0ms</div>
+              <div class="stat-label">Full Scan Time</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Suffix Array Demo -->
+    <div class="demo-section">
+      <h2>
+        🔎 Suffix Array: Substring Search
+        <span class="badge">O(m log n)</span>
+      </h2>
+      <div class="demo-content">
+        <div class="demo-controls">
+          <div class="control-group">
+            <label>Search for ANY substring (not just prefix):</label>
+            <input type="text" id="suffix-input" placeholder="Try: phone, Galaxy, soft" />
+          </div>
+          <button id="suffix-search-btn">Search with Suffix Array</button>
+          <button id="suffix-naive-btn">Search with Naive Scan</button>
+          <div class="info">
+            💡 Suffix Array finds substrings anywhere in the text, not just at the start!<br>
+            <strong>Example:</strong> "phone" will match "i<u>Phone</u>", "head<u>Phone</u>s", etc.
+          </div>
+        </div>
+        <div class="demo-result">
+          <div class="result-title">Search Results:</div>
+          <div class="result-content" id="suffix-result"></div>
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-value" id="suffix-time">0ms</div>
+              <div class="stat-label">Suffix Array Time</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="naive-time">0ms</div>
+              <div class="stat-label">Naive Scan Time</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="suffix-speedup">-</div>
+              <div class="stat-label">Speedup</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pattern Detection Demo -->
+    <div class="demo-section">
+      <h2>
+        🎯 Pattern Detection: Smart Autofill
+        <span class="badge">Sequence Analysis</span>
+      </h2>
+      <div class="demo-content">
+        <div class="demo-controls">
+          <div class="control-group">
+            <label>Source Values (comma-separated):</label>
+            <input type="text" id="pattern-input" placeholder="e.g., 1,2,3 or Item 1,Item 2" value="1,2,3" />
+          </div>
+          <div class="control-group">
+            <label>Target Length:</label>
+            <input type="number" id="pattern-length" value="10" min="1" max="100" />
+          </div>
+          <button id="pattern-preview-btn">Preview Autofill</button>
+          <button id="pattern-preset1">Preset: Arithmetic (1,2,3)</button>
+          <button id="pattern-preset2">Preset: Geometric (2,4,8)</button>
+          <button id="pattern-preset3">Preset: Text (Item 1, Item 2)</button>
+          <div class="info">
+            💡 Pattern Detection identifies sequences and intelligently fills the range.
+          </div>
+        </div>
+        <div class="demo-result">
+          <div class="result-title">Autofill Preview:</div>
+          <div class="result-content" id="pattern-result"></div>
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-value" id="pattern-type">-</div>
+              <div class="stat-label">Pattern Type</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="pattern-confidence">-</div>
+              <div class="stat-label">Confidence</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LRU Cache Demo -->
+    <div class="demo-section">
+      <h2>
+        💾 LRU Cache: Cell Caching
+        <span class="badge">O(1) operations</span>
+      </h2>
+      <div class="demo-content">
+        <div class="demo-controls">
+          <div class="control-group">
+            <label>Cache Capacity:</label>
+            <input type="number" id="cache-capacity" value="100" min="10" max="1000" />
+          </div>
+          <button id="cache-init-btn">Initialize Cache</button>
+          <button id="cache-populate-btn" disabled>Populate with Random Data</button>
+          <button id="cache-access-btn" disabled>Simulate Hot Access Pattern</button>
+          <button id="cache-stress-btn" disabled>Stress Test (10K operations)</button>
+          <div class="info">
+            💡 LRU Cache automatically evicts least recently used items to maintain bounded memory.
+            Perfect for caching rendered cells, formula results, or formatted values!
+          </div>
+        </div>
+        <div class="demo-result">
+          <div class="result-title">Cache Performance:</div>
+          <div class="result-content" id="cache-result">Cache not initialized. Click "Initialize Cache" button.</div>
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-value" id="cache-size">0</div>
+              <div class="stat-label">Current Size</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="cache-hits">0</div>
+              <div class="stat-label">Cache Hits</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="cache-misses">0</div>
+              <div class="stat-label">Cache Misses</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="cache-hitrate">0%</div>
+              <div class="stat-label">Hit Rate</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="cache-evictions">0</div>
+              <div class="stat-label">Evictions</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="cache-memory">0 KB</div>
+              <div class="stat-label">Est. Memory</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Command Stack Demo -->
+    <div class="demo-section">
+      <h2>
+        ⏪ Command Stack: Undo/Redo
+        <span class="badge">O(1) operations</span>
+      </h2>
+      <div class="demo-content">
+        <div class="demo-controls">
+          <div class="control-group">
+            <label>Max Stack Size:</label>
+            <input type="number" id="cmd-maxsize" value="50" min="1" max="1000" />
+          </div>
+          <button id="cmd-init-btn">Initialize Command Stack</button>
+          <button id="cmd-add-btn" disabled>Add Text</button>
+          <button id="cmd-delete-btn" disabled>Delete Text</button>
+          <button id="cmd-undo-btn" disabled>Undo</button>
+          <button id="cmd-redo-btn" disabled>Redo</button>
+          <button id="cmd-clear-btn" disabled>Clear Stack</button>
+          <div class="info">
+            💡 Command Stack provides efficient undo/redo with O(1) operations.
+            Perfect for implementing undo/redo in grid operations!
+          </div>
+        </div>
+        <div class="demo-result">
+          <div class="result-title">Document State:</div>
+          <div class="result-content" id="cmd-document" style="background: white; padding: 10px; border: 1px solid #ddd; min-height: 100px; white-space: pre-wrap;"></div>
+          <div class="result-title" style="margin-top: 15px;">Command History:</div>
+          <div class="result-content" id="cmd-history"></div>
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-value" id="cmd-undo-count">0</div>
+              <div class="stat-label">Can Undo</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="cmd-redo-count">0</div>
+              <div class="stat-label">Can Redo</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="cmd-total-count">0</div>
+              <div class="stat-label">Total Commands</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Segment Tree Demo -->
+    <div class="demo-section">
+      <h2>
+        🌳 Segment Tree: Range Aggregations
+        <span class="badge">O(log n) queries</span>
+      </h2>
+      <div class="demo-content">
+        <div class="demo-controls">
+          <div class="control-group">
+            <label>Array Size:</label>
+            <input type="number" id="segtree-size" value="20" min="5" max="100" />
+          </div>
+          <div class="control-group">
+            <label>Aggregation Type:</label>
+            <select id="segtree-type">
+              <option value="sum">Sum</option>
+              <option value="min">Minimum</option>
+              <option value="max">Maximum</option>
+              <option value="gcd">GCD</option>
+            </select>
+          </div>
+          <button id="segtree-init-btn">Initialize Tree</button>
+          <div class="control-group">
+            <label>Query Range (e.g., 0-10):</label>
+            <input type="text" id="segtree-query-input" placeholder="0-10" disabled />
+          </div>
+          <button id="segtree-query-btn" disabled>Query Range</button>
+          <div class="control-group">
+            <label>Update Index & Value (e.g., 5:100):</label>
+            <input type="text" id="segtree-update-input" placeholder="5:100" disabled />
+          </div>
+          <button id="segtree-update-btn" disabled>Update Value</button>
+          <button id="segtree-stress-btn" disabled>Stress Test (1000 ops)</button>
+          <div class="info">
+            💡 Segment Tree enables O(log n) range queries and updates.
+            Perfect for status bar aggregations (SUM/MIN/MAX of selected cells)!
+          </div>
+        </div>
+        <div class="demo-result">
+          <div class="result-title">Array Visualization:</div>
+          <div class="result-content" id="segtree-array" style="background: white; padding: 10px; border: 1px solid #ddd; min-height: 80px;"></div>
+          <div class="result-title" style="margin-top: 15px;">Results:</div>
+          <div class="result-content" id="segtree-result"></div>
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-value" id="segtree-size-stat">0</div>
+              <div class="stat-label">Array Size</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="segtree-total">0</div>
+              <div class="stat-label">Total Aggregate</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="segtree-queries">0</div>
+              <div class="stat-label">Queries</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="segtree-updates">0</div>
+              <div class="stat-label">Updates</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="segtree-time">0ms</div>
+              <div class="stat-label">Last Operation</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skip List Demo -->
+    <div class="demo-section">
+      <h2>
+        📊 Skip List: Sorted Data Management
+        <span class="badge">O(log n) average</span>
+      </h2>
+      <div class="demo-content">
+        <div class="demo-controls">
+          <div class="control-group">
+            <label>Key (number):</label>
+            <input type="number" id="skiplist-key" value="10" />
+          </div>
+          <div class="control-group">
+            <label>Value (text):</label>
+            <input type="text" id="skiplist-value" placeholder="Enter value" />
+          </div>
+          <button id="skiplist-insert-btn">Insert</button>
+          <button id="skiplist-delete-btn">Delete Key</button>
+          <button id="skiplist-clear-btn">Clear All</button>
+          <div class="control-group">
+            <label>Range Query (e.g., 10-50):</label>
+            <input type="text" id="skiplist-range" placeholder="10-50" />
+          </div>
+          <button id="skiplist-range-btn">Query Range</button>
+          <div class="control-group">
+            <label>Find Kth element (0-indexed):</label>
+            <input type="number" id="skiplist-kth" value="0" min="0" />
+          </div>
+          <button id="skiplist-kth-btn">Find Kth</button>
+          <button id="skiplist-populate-btn">Populate Random Data</button>
+          <button id="skiplist-benchmark-btn">Benchmark (10K ops)</button>
+          <div class="info">
+            💡 Skip List maintains sorted data with probabilistic balancing.
+            Perfect for sorted column indices and dynamic sorted sets!
+          </div>
+        </div>
+        <div class="demo-result">
+          <div class="result-title">Sorted Data Visualization:</div>
+          <div class="result-content" id="skiplist-visualization" style="background: white; padding: 10px; border: 1px solid #ddd; min-height: 100px; max-height: 200px; overflow-y: auto;"></div>
+          <div class="result-title" style="margin-top: 15px;">Results:</div>
+          <div class="result-content" id="skiplist-result"></div>
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-value" id="skiplist-size">0</div>
+              <div class="stat-label">Size</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="skiplist-level">0</div>
+              <div class="stat-label">Current Level</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="skiplist-min">-</div>
+              <div class="stat-label">Min Key</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="skiplist-max">-</div>
+              <div class="stat-label">Max Key</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="skiplist-time">0ms</div>
+              <div class="stat-label">Last Operation</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Disjoint Set Demo -->
+    <div class="demo-section">
+      <h2>
+        🔗 Disjoint Set (Union-Find): Merged Cells
+        <span class="badge">O(α(n)) ≈ O(1)</span>
+      </h2>
+      <div class="demo-content">
+        <div class="demo-controls">
+          <div class="control-group">
+            <label>Grid Size (rows x cols):</label>
+            <input type="text" id="disjoint-grid-size" value="10x10" placeholder="10x10" />
+          </div>
+          <button id="disjoint-init-btn">Initialize Grid</button>
+          <div class="control-group">
+            <label>Merge Cells (e.g., (0,0)-(2,2)):</label>
+            <input type="text" id="disjoint-merge-input" placeholder="(0,0)-(2,2)" disabled />
+          </div>
+          <button id="disjoint-merge-btn" disabled>Merge Range</button>
+          <div class="control-group">
+            <label>Check Connection (e.g., (0,0),(1,1)):</label>
+            <input type="text" id="disjoint-check-input" placeholder="(0,0),(1,1)" disabled />
+          </div>
+          <button id="disjoint-check-btn" disabled>Check Connected</button>
+          <button id="disjoint-preset1" disabled>Preset: Merge Header Row (0,0-0,9)</button>
+          <button id="disjoint-preset2" disabled>Preset: Merge 2x2 Blocks</button>
+          <button id="disjoint-benchmark-btn" disabled>Benchmark (100x100 grid)</button>
+          <div class="info">
+            💡 Disjoint Set tracks merged cells with near-constant time operations.
+            Uses path compression and union by rank for optimal performance!
+          </div>
+        </div>
+        <div class="demo-result">
+          <div class="result-title">Grid Visualization (merged cells highlighted):</div>
+          <div class="result-content" id="disjoint-visualization" style="background: white; padding: 10px; border: 1px solid #ddd; min-height: 150px; max-height: 300px; overflow: auto;"></div>
+          <div class="result-title" style="margin-top: 15px;">Results:</div>
+          <div class="result-content" id="disjoint-result"></div>
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-value" id="disjoint-cells">0</div>
+              <div class="stat-label">Total Cells</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="disjoint-sets">0</div>
+              <div class="stat-label">Disjoint Sets</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="disjoint-largest">0</div>
+              <div class="stat-label">Largest Merge</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="disjoint-time">0ms</div>
+              <div class="stat-label">Last Operation</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Performance Summary -->
+    <div class="demo-section">
+      <h2>📊 Performance Summary</h2>
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-value">O(m+k)</div>
+          <div class="stat-label">Trie: Autocomplete</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">O(log n)</div>
+          <div class="stat-label">RTree: Hit Testing</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">O(V+E)</div>
+          <div class="stat-label">Graph: Formulas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">O(k)</div>
+          <div class="stat-label">Bloom: Membership</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">O(m log n)</div>
+          <div class="stat-label">Suffix: Substring</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">5 Patterns</div>
+          <div class="stat-label">Sequence Types</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">O(1)</div>
+          <div class="stat-label">LRU: Caching</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">O(1)</div>
+          <div class="stat-label">Command: Undo/Redo</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">O(log n)</div>
+          <div class="stat-label">SegTree: Range Query</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">O(log n)</div>
+          <div class="stat-label">SkipList: Search</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">O(α(n))</div>
+          <div class="stat-label">DisjointSet: Union</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

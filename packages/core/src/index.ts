@@ -45,11 +45,23 @@ export type {
   ConditionalStyle,
 } from './rendering/renderers';
 
+// Data layer
+export type { DataAccessor } from './data/data-accessor';
+export type { IndexMap, IndexMapOptions } from './data/index-map';
+export { createIndexMap, createIdentityIndexMap } from './data/index-map';
+
+// Features - Sorting
+export type { RowSorter, SortOptions, NullPosition } from './features/sorting';
+export { SingleColumnSorter } from './features/sorting';
+
+// Selection utilities
+export { normalizeRange, mergeRanges, containsCell, rangesIntersect } from './selection/range-utils';
+export { createHitTester } from './selection/hit-tester';
+
+// Main Grid class
+export { Grid } from './grid';
+
 // TODO: Implement remaining modules
-//
-//
-// // Selection
-// export { SelectionManager } from './selection/selection-manager';
 //
 // // Editing
 // export type { CellEditor } from './editing/cell-editor.interface';
@@ -68,16 +80,12 @@ export type {
 // export type { GridEvents } from './events/grid-events';
 //
 // // Features
-// export { SingleColumnSorter } from './features/sorting/single-column-sorter';
 // export { BasicFilter } from './features/filtering/basic-filter';
 // export { ClipboardManager } from './features/copy-paste/clipboard-manager';
 // export { CSVExporter } from './features/export/csv-exporter';
 //
 // // Utilities
 // export { PerformanceMonitor } from './utils/performance-monitor';
-//
-// // Main Grid class
-// export { Grid } from './grid';
 
 // Version
 export const VERSION = '0.1.0';

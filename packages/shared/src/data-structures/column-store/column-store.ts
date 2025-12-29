@@ -133,6 +133,21 @@ export class ColumnStore implements IColumnStore {
   }
 
   private coerceValue(value: any, type: ColumnType): any {
+    // Handle null/undefined specially for all types
+    if (value === null || value === undefined) {
+      switch (type) {
+        case 'int32':
+        case 'float64':
+          // Use NaN to represent null in numeric columns
+          return NaN;
+        case 'boolean':
+        case 'string':
+          return null;
+        default:
+          return null;
+      }
+    }
+
     switch (type) {
       case 'int32':
         return Math.floor(Number(value));
@@ -141,7 +156,7 @@ export class ColumnStore implements IColumnStore {
       case 'boolean':
         return Boolean(value);
       case 'string':
-        return value === null || value === undefined ? null : String(value);
+        return String(value);
       default:
         return value;
     }
@@ -211,21 +226,32 @@ export class ColumnStore implements IColumnStore {
       );
     }
 
+    // Helper to check if value is null/undefined
+    const isNull = (val: any): boolean => {
+      return val === null || val === undefined || Number.isNaN(val);
+    };
+
     let value = 0;
     let count = 0;
 
     switch (operation) {
       case 'sum':
         for (let i = 0; i < this.rows; i++) {
-          value += column[i];
-          count++;
+          const cellValue = column[i];
+          if (!isNull(cellValue)) {
+            value += cellValue;
+            count++;
+          }
         }
         break;
 
       case 'avg':
         for (let i = 0; i < this.rows; i++) {
-          value += column[i];
-          count++;
+          const cellValue = column[i];
+          if (!isNull(cellValue)) {
+            value += cellValue;
+            count++;
+          }
         }
         value = count > 0 ? value / count : 0;
         break;
@@ -233,28 +259,41 @@ export class ColumnStore implements IColumnStore {
       case 'min':
         value = Infinity;
         for (let i = 0; i < this.rows; i++) {
-          if (column[i] < value) {
-            value = column[i];
+          const cellValue = column[i];
+          if (!isNull(cellValue)) {
+            if (cellValue < value) {
+              value = cellValue;
+            }
+            count++;
           }
-          count++;
         }
+        // If no non-null values found, return 0
         if (count === 0) value = 0;
         break;
 
       case 'max':
         value = -Infinity;
         for (let i = 0; i < this.rows; i++) {
-          if (column[i] > value) {
-            value = column[i];
+          const cellValue = column[i];
+          if (!isNull(cellValue)) {
+            if (cellValue > value) {
+              value = cellValue;
+            }
+            count++;
           }
-          count++;
         }
+        // If no non-null values found, return 0
         if (count === 0) value = 0;
         break;
 
       case 'count':
-        value = this.rows;
-        count = this.rows;
+        // Count only non-null values
+        for (let i = 0; i < this.rows; i++) {
+          if (!isNull(column[i])) {
+            count++;
+          }
+        }
+        value = count;
         break;
 
       default:

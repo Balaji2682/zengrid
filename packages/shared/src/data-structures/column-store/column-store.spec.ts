@@ -309,6 +309,206 @@ describe('ColumnStore', () => {
     });
   });
 
+  describe('Aggregations with Null Values', () => {
+    let store: ColumnStore;
+
+    beforeEach(() => {
+      store = new ColumnStore({
+        rowCount: 5,
+        columns: [{ name: 'values', type: 'float64' }],
+      });
+    });
+
+    it('should skip null values in sum aggregation', () => {
+      // Set: [10, null, 30, null, 50]
+      store.setValue(0, 'values', 10);
+      store.setValue(1, 'values', null);
+      store.setValue(2, 'values', 30);
+      store.setValue(3, 'values', null);
+      store.setValue(4, 'values', 50);
+
+      const result = store.aggregate('values', 'sum');
+
+      expect(result.value).toBe(90); // 10 + 30 + 50, skipping nulls
+      expect(result.count).toBe(3); // Only 3 non-null values
+      expect(result.operation).toBe('sum');
+    });
+
+    it('should skip null values in avg aggregation', () => {
+      // Set: [10, null, 20, null, 30]
+      store.setValue(0, 'values', 10);
+      store.setValue(1, 'values', null);
+      store.setValue(2, 'values', 20);
+      store.setValue(3, 'values', null);
+      store.setValue(4, 'values', 30);
+
+      const result = store.aggregate('values', 'avg');
+
+      expect(result.value).toBe(20); // (10 + 20 + 30) / 3 = 20
+      expect(result.count).toBe(3); // Only 3 non-null values
+    });
+
+    it('should skip null values in min aggregation', () => {
+      // Set: [null, 50, 30, null, 10]
+      store.setValue(0, 'values', null);
+      store.setValue(1, 'values', 50);
+      store.setValue(2, 'values', 30);
+      store.setValue(3, 'values', null);
+      store.setValue(4, 'values', 10);
+
+      const result = store.aggregate('values', 'min');
+
+      expect(result.value).toBe(10); // Min of non-null values
+      expect(result.count).toBe(3); // Number of comparisons made
+    });
+
+    it('should skip null values in max aggregation', () => {
+      // Set: [null, 50, 30, null, 100]
+      store.setValue(0, 'values', null);
+      store.setValue(1, 'values', 50);
+      store.setValue(2, 'values', 30);
+      store.setValue(3, 'values', null);
+      store.setValue(4, 'values', 100);
+
+      const result = store.aggregate('values', 'max');
+
+      expect(result.value).toBe(100); // Max of non-null values
+      expect(result.count).toBe(3); // Number of comparisons made
+    });
+
+    it('should count only non-null values', () => {
+      // Set: [10, null, 20, null, 30]
+      store.setValue(0, 'values', 10);
+      store.setValue(1, 'values', null);
+      store.setValue(2, 'values', 20);
+      store.setValue(3, 'values', null);
+      store.setValue(4, 'values', 30);
+
+      const result = store.aggregate('values', 'count');
+
+      expect(result.value).toBe(3); // Only 3 non-null values
+      expect(result.count).toBe(3);
+    });
+
+    it('should handle all null values in sum', () => {
+      // Set all to null
+      for (let i = 0; i < 5; i++) {
+        store.setValue(i, 'values', null);
+      }
+
+      const result = store.aggregate('values', 'sum');
+
+      expect(result.value).toBe(0);
+      expect(result.count).toBe(0);
+    });
+
+    it('should handle all null values in avg', () => {
+      // Set all to null
+      for (let i = 0; i < 5; i++) {
+        store.setValue(i, 'values', null);
+      }
+
+      const result = store.aggregate('values', 'avg');
+
+      expect(result.value).toBe(0);
+      expect(result.count).toBe(0);
+    });
+
+    it('should handle all null values in min', () => {
+      // Set all to null
+      for (let i = 0; i < 5; i++) {
+        store.setValue(i, 'values', null);
+      }
+
+      const result = store.aggregate('values', 'min');
+
+      expect(result.value).toBe(0); // Returns 0 when no values
+      expect(result.count).toBe(0);
+    });
+
+    it('should handle all null values in max', () => {
+      // Set all to null
+      for (let i = 0; i < 5; i++) {
+        store.setValue(i, 'values', null);
+      }
+
+      const result = store.aggregate('values', 'max');
+
+      expect(result.value).toBe(0); // Returns 0 when no values
+      expect(result.count).toBe(0);
+    });
+
+    it('should handle all null values in count', () => {
+      // Set all to null
+      for (let i = 0; i < 5; i++) {
+        store.setValue(i, 'values', null);
+      }
+
+      const result = store.aggregate('values', 'count');
+
+      expect(result.value).toBe(0);
+      expect(result.count).toBe(0);
+    });
+
+    it('should handle mix of null, zero, and positive values', () => {
+      // Set: [0, null, 10, 0, null]
+      store.setValue(0, 'values', 0);
+      store.setValue(1, 'values', null);
+      store.setValue(2, 'values', 10);
+      store.setValue(3, 'values', 0);
+      store.setValue(4, 'values', null);
+
+      const sum = store.aggregate('values', 'sum');
+      expect(sum.value).toBe(10); // 0 + 10 + 0 = 10
+      expect(sum.count).toBe(3); // Three non-null values (including zeros)
+
+      const avg = store.aggregate('values', 'avg');
+      expect(avg.value).toBeCloseTo(3.33, 2); // 10 / 3
+
+      const count = store.aggregate('values', 'count');
+      expect(count.value).toBe(3); // Count includes zeros but not nulls
+    });
+
+    it('should handle negative values with nulls', () => {
+      // Set: [-10, null, -20, null, -5]
+      store.setValue(0, 'values', -10);
+      store.setValue(1, 'values', null);
+      store.setValue(2, 'values', -20);
+      store.setValue(3, 'values', null);
+      store.setValue(4, 'values', -5);
+
+      const sum = store.aggregate('values', 'sum');
+      expect(sum.value).toBe(-35); // -10 + -20 + -5
+
+      const min = store.aggregate('values', 'min');
+      expect(min.value).toBe(-20); // Most negative
+
+      const max = store.aggregate('values', 'max');
+      expect(max.value).toBe(-5); // Least negative
+    });
+
+    it('should handle Int32Array with nulls (limitation: null becomes 0)', () => {
+      const intStore = new ColumnStore({
+        rowCount: 5,
+        columns: [{ name: 'ints', type: 'int32' }],
+      });
+
+      // LIMITATION: Int32Array cannot store NaN (gets converted to 0)
+      // So null values in int32 columns become 0 and are counted
+      intStore.setValue(0, 'ints', 100);
+      intStore.setValue(1, 'ints', null); // Becomes 0 in Int32Array
+      intStore.setValue(2, 'ints', 200);
+      intStore.setValue(3, 'ints', null); // Becomes 0 in Int32Array
+      intStore.setValue(4, 'ints', 300);
+
+      const result = intStore.aggregate('ints', 'sum');
+
+      // Int32Array converts NaN to 0, so sum includes two zeros
+      expect(result.value).toBe(600); // 100 + 0 + 200 + 0 + 300
+      expect(result.count).toBe(5); // All 5 values counted (nulls became 0)
+    });
+  });
+
   describe('Row Management', () => {
     it('should add rows', () => {
       const store = new ColumnStore({

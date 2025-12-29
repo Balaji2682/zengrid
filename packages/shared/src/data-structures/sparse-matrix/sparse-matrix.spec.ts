@@ -182,18 +182,7 @@ describe('SparseMatrix', () => {
   });
 
   describe('Custom Options', () => {
-    it('should use custom hash function', () => {
-      const customHash = (row: number, col: number) => `r${row}c${col}`;
-      const matrix = new SparseMatrix<number>({
-        hashFunction: customHash,
-      });
-
-      matrix.set(10, 20, 42);
-      expect(matrix.get(10, 20)).toBe(42);
-      expect(matrix.size).toBe(1);
-    });
-
-    it('should handle initial capacity', () => {
+    it('should handle initial capacity hint', () => {
       const matrix = new SparseMatrix<number>({
         initialCapacity: 100,
       });
@@ -244,6 +233,118 @@ describe('SparseMatrix', () => {
         [1, 0, 3],
         [0, 5, 0],
       ]);
+    });
+  });
+
+  describe('Performance Characteristics', () => {
+    it('should handle large sparse matrices efficiently', () => {
+      const matrix = new SparseMatrix<number>();
+      const rowCount = 10000;
+      const colsPerRow = 10;
+
+      // Fill sparse matrix: 10K rows, 10 cells per row = 100K cells total
+      const startFill = performance.now();
+      for (let row = 0; row < rowCount; row++) {
+        for (let col = 0; col < colsPerRow; col++) {
+          matrix.set(row, col, row * colsPerRow + col);
+        }
+      }
+      const fillTime = performance.now() - startFill;
+
+      expect(matrix.size).toBe(rowCount * colsPerRow);
+      expect(fillTime).toBeLessThan(500); // Should complete in < 500ms
+    });
+
+    it('should have O(1) row access', () => {
+      const matrix = new SparseMatrix<number>();
+      const rowCount = 1000;
+      const colsPerRow = 100;
+
+      // Fill matrix
+      for (let row = 0; row < rowCount; row++) {
+        for (let col = 0; col < colsPerRow; col++) {
+          matrix.set(row, col, row * colsPerRow + col);
+        }
+      }
+
+      // Test row access performance - should be O(1), not O(total cells)
+      const startGetRow = performance.now();
+      for (let i = 0; i < 100; i++) {
+        const row = matrix.getRow(500);
+        expect(row.size).toBe(colsPerRow);
+      }
+      const getRowTime = performance.now() - startGetRow;
+
+      // 100 row accesses should be extremely fast (< 10ms)
+      // Old implementation would scan all 100K cells 100 times!
+      expect(getRowTime).toBeLessThan(10);
+    });
+
+    it('should have efficient column access', () => {
+      const matrix = new SparseMatrix<number>();
+      const rowCount = 1000;
+      const colsPerRow = 100;
+
+      // Fill matrix
+      for (let row = 0; row < rowCount; row++) {
+        for (let col = 0; col < colsPerRow; col++) {
+          matrix.set(row, col, row * colsPerRow + col);
+        }
+      }
+
+      // Test column access - O(rows with data), not O(total cells)
+      const startGetCol = performance.now();
+      const col = matrix.getColumn(50);
+      const getColTime = performance.now() - startGetCol;
+
+      expect(col.size).toBe(rowCount); // 1000 cells in this column
+      // Should iterate only 1000 rows, not 100K cells
+      expect(getColTime).toBeLessThan(10);
+    });
+
+    it('should have O(1) row deletion', () => {
+      const matrix = new SparseMatrix<number>();
+      const rowCount = 1000;
+      const colsPerRow = 100;
+
+      // Fill matrix
+      for (let row = 0; row < rowCount; row++) {
+        for (let col = 0; col < colsPerRow; col++) {
+          matrix.set(row, col, row * colsPerRow + col);
+        }
+      }
+
+      // Test row deletion - should be O(1)
+      const startDelete = performance.now();
+      const deleted = matrix.deleteRow(500);
+      const deleteTime = performance.now() - startDelete;
+
+      expect(deleted).toBe(colsPerRow);
+      expect(matrix.size).toBe(rowCount * colsPerRow - colsPerRow);
+      expect(deleteTime).toBeLessThan(1); // Should be instant
+    });
+
+    it('should efficiently handle very sparse data', () => {
+      const matrix = new SparseMatrix<number>();
+
+      // Very sparse: 1 million potential cells, only 1000 filled
+      // Scattered across different rows
+      const cellCount = 1000;
+      for (let i = 0; i < cellCount; i++) {
+        const row = i * 1000; // Rows: 0, 1000, 2000, ...
+        const col = i;
+        matrix.set(row, col, i);
+      }
+
+      expect(matrix.size).toBe(cellCount);
+
+      // Access should still be fast even though row indices are large
+      const value = matrix.get(500000, 500);
+      expect(value).toBe(500);
+
+      // Row access should be instant
+      const row = matrix.getRow(500000);
+      expect(row.size).toBe(1);
     });
   });
 });

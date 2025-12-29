@@ -29,6 +29,48 @@ export type {
   AggregationResult,
 } from './data-structures/column-store';
 
+export { LRUCache } from './data-structures/lru-cache';
+export type {
+  ILRUCache,
+  LRUCacheOptions,
+  CacheEntry,
+  CacheStats,
+} from './data-structures/lru-cache';
+
+export { CommandStack } from './data-structures/command-stack';
+export type {
+  ICommandStack,
+  ICommand,
+  ICommandStackOptions,
+} from './data-structures/command-stack';
+
+export { SegmentTree } from './data-structures/segment-tree';
+export type {
+  ISegmentTree,
+  SegmentTreeOptions,
+  AggregateFunction,
+  AggregationType,
+} from './data-structures/segment-tree';
+export { Aggregations, SegmentTreeUtils } from './data-structures/segment-tree';
+
+export { SkipList } from './data-structures/skip-list';
+export type {
+  ISkipList,
+  SkipListNode,
+  SkipListOptions,
+  RangeResult as SkipListRangeResult,
+  SkipListStats,
+} from './data-structures/skip-list';
+export { defaultComparator as skipListDefaultComparator, SkipListUtils } from './data-structures/skip-list';
+
+export { DisjointSet } from './data-structures/disjoint-set';
+export type {
+  IDisjointSet,
+  DisjointSetOptions,
+  DisjointSetStats,
+} from './data-structures/disjoint-set';
+export { DisjointSetUtils } from './data-structures/disjoint-set';
+
 // Algorithms
 export {
   binarySearch,
@@ -51,6 +93,22 @@ export type {
   Point,
   BoundingBox,
 } from './types';
+
+// Utilities
+export {
+  debounce,
+  throttle,
+  createRAFBatchScheduler,
+  delay,
+  timeout,
+} from './utils/timing';
+export type {
+  DebounceOptions,
+  DebouncedFunction,
+  ThrottleOptions,
+  ThrottledFunction,
+  RAFBatchScheduler,
+} from './utils/timing.interface';
 
 // Version
 export const VERSION = '0.1.0';
