@@ -1,0 +1,288 @@
+/**
+ * ZenGrid Pagination Styles
+ * Styles for 5 built-in pagination templates
+ */
+
+/* Base Pagination Styles */
+.zg-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #fff;
+  border-top: 1px solid #e0e0e0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  user-select: none;
+}
+
+/* Button Styles */
+.zg-pagination-btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 4px 8px;
+  border: 1px solid #d0d0d0;
+  background: #fff;
+  color: #333;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.zg-pagination-btn:hover:not(:disabled) {
+  background: #f5f5f5;
+  border-color: #999;
+}
+
+.zg-pagination-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.zg-pagination-btn-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.zg-pagination-btn-active {
+  background: #2196f3;
+  color: white;
+  border-color: #2196f3;
+}
+
+.zg-pagination-btn-icon {
+  font-size: 18px;
+  padding: 4px;
+  min-width: 28px;
+}
+
+/* Select Styles */
+.zg-pagination-select {
+  padding: 4px 24px 4px 8px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  height: 32px;
+}
+
+.zg-pagination-select:hover {
+  border-color: #999;
+}
+
+/* Label Styles */
+.zg-pagination-label {
+  color: #666;
+  margin: 0 4px;
+}
+
+/* Info Styles */
+.zg-pagination-info {
+  color: #666;
+  margin-right: 8px;
+}
+
+/* Ellipsis */
+.zg-pagination-ellipsis {
+  padding: 0 4px;
+  color: #999;
+}
+
+/* Input Styles */
+.zg-pagination-input {
+  width: 50px;
+  height: 32px;
+  padding: 4px 8px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 14px;
+  margin: 0 8px;
+}
+
+.zg-pagination-input:focus {
+  outline: none;
+  border-color: #2196f3;
+}
+
+/* Template 1: Simple */
+.zg-pagination-simple {
+  justify-content: center;
+}
+
+/* Template 2: Material */
+.zg-pagination-material {
+  justify-content: flex-end;
+}
+
+.zg-pagination-size-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 24px;
+}
+
+.zg-pagination-nav {
+  display: flex;
+  gap: 4px;
+}
+
+/* Template 3: Bootstrap */
+.zg-pagination-bootstrap {
+  justify-content: center;
+}
+
+.zg-pagination-list {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 4px;
+}
+
+.zg-pagination-item {
+  display: flex;
+}
+
+.zg-pagination-link {
+  min-width: 36px;
+  height: 36px;
+  padding: 8px 12px;
+  border: 1px solid #dee2e6;
+  background: #fff;
+  color: #0d6efd;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zg-pagination-link:hover:not(:disabled) {
+  background: #e9ecef;
+  border-color: #0d6efd;
+}
+
+.zg-pagination-item-active .zg-pagination-link {
+  background: #0d6efd;
+  color: white;
+  border-color: #0d6efd;
+}
+
+.zg-pagination-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #6c757d;
+}
+
+/* Template 4: Compact */
+.zg-pagination-compact {
+  justify-content: space-between;
+}
+
+.zg-pagination-page-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Template 5: Full */
+.zg-pagination-full {
+  justify-content: space-between;
+}
+
+.zg-pagination-section-left,
+.zg-pagination-section-center,
+.zg-pagination-section-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zg-pagination-section-center {
+  gap: 4px;
+}
+
+.zg-pagination-counter {
+  color: #666;
+  font-weight: 500;
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .zg-pagination {
+    background: #1e1e1e;
+    border-color: #404040;
+  }
+
+  .zg-pagination-btn,
+  .zg-pagination-select,
+  .zg-pagination-input,
+  .zg-pagination-link {
+    background: #2d2d2d;
+    border-color: #404040;
+    color: #e0e0e0;
+  }
+
+  .zg-pagination-btn:hover:not(:disabled),
+  .zg-pagination-select:hover,
+  .zg-pagination-link:hover:not(:disabled) {
+    background: #3d3d3d;
+    border-color: #606060;
+  }
+
+  .zg-pagination-btn-active {
+    background: #1976d2;
+    border-color: #1976d2;
+  }
+
+  .zg-pagination-item-active .zg-pagination-link {
+    background: #1976d2;
+    border-color: #1976d2;
+  }
+
+  .zg-pagination-label,
+  .zg-pagination-info,
+  .zg-pagination-counter {
+    color: #b0b0b0;
+  }
+
+  .zg-pagination-ellipsis {
+    color: #707070;
+  }
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .zg-pagination {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .zg-pagination-full {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .zg-pagination-section-left,
+  .zg-pagination-section-center,
+  .zg-pagination-section-right {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .zg-pagination-info {
+    font-size: 12px;
+  }
+
+  .zg-pagination-btn,
+  .zg-pagination-link {
+    min-width: 28px;
+    height: 28px;
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+}

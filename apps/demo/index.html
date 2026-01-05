@@ -91,13 +91,70 @@
       margin-top: 0.25rem;
     }
 
-    #grid-container {
+    #grid-wrapper {
       flex: 1;
       background: white;
       margin: 1rem 2rem;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #grid-header {
+      position: relative;
+      height: 32px;
+      background: #f5f5f5;
+      border-bottom: 2px solid #ddd;
+      overflow: hidden;
+    }
+
+    #grid-header-canvas {
+      position: relative;
+      height: 100%;
+    }
+
+    .grid-header-cell {
+      position: absolute;
+      top: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      border-right: 1px solid #ddd;
+      user-select: none;
+      box-sizing: border-box;
+    }
+
+    .grid-header-cell.sortable {
+      cursor: pointer;
+    }
+
+    .grid-header-cell.sortable:hover {
+      background: #e8e8e8;
+    }
+
+    .grid-header-cell.sorted-asc,
+    .grid-header-cell.sorted-desc {
+      background: #d6eaf8;
+      color: #2196f3;
+    }
+
+    .sort-indicator {
+      margin-left: 4px;
+      font-size: 10px;
+      color: #2196f3;
+      opacity: 0.8;
+    }
+
+    #grid-container {
+      flex: 1;
+      position: relative;
+      background: white;
     }
 
     /* Grid cell styles */
@@ -161,20 +218,260 @@
       color: #7f8c8d;
       text-align: center;
     }
+
+    /* Filter Panel Styles */
+    #filter-panel {
+      background: white;
+      border-bottom: 1px solid #ddd;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+
+    #filter-panel.expanded {
+      max-height: 800px;
+      overflow-y: auto;
+    }
+
+    #filter-content {
+      padding: 1.5rem 2rem;
+    }
+
+    .filter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .filter-header h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    .filter-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      align-items: center;
+      background: #f8f9fa;
+      padding: 0.75rem;
+      border-radius: 4px;
+      border: 1px solid #e9ecef;
+      position: relative;
+    }
+
+    .filter-row-index {
+      position: absolute;
+      left: -30px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 24px;
+      background: #3498db;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    #filter-rows {
+      padding-left: 30px;
+    }
+
+    .logic-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0.5rem 0;
+      gap: 1rem;
+    }
+
+    .logic-toggle {
+      display: inline-flex;
+      background: #fff;
+      border: 2px solid #3498db;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .logic-toggle input[type="radio"] {
+      display: none;
+    }
+
+    .logic-toggle label {
+      padding: 0.4rem 1rem;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #3498db;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .logic-toggle input[type="radio"]:checked + label {
+      background: #3498db;
+      color: white;
+    }
+
+    .logic-toggle label:hover {
+      background: rgba(52, 152, 219, 0.1);
+    }
+
+    .logic-toggle input[type="radio"]:checked + label:hover {
+      background: #2980b9;
+    }
+
+    .logic-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, transparent, #ddd, transparent);
+    }
+
+    .filter-row select,
+    .filter-row input {
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.875rem;
+    }
+
+    .filter-row select {
+      min-width: 150px;
+    }
+
+    .filter-row input {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .filter-row button {
+      padding: 0.5rem 0.75rem;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+
+    .filter-row button:hover {
+      background: #c0392b;
+    }
+
+    .btn-add-filter {
+      padding: 0.5rem 1rem;
+      background: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+
+    .btn-add-filter:hover {
+      background: #229954;
+    }
+
+    #filter-exports {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #ddd;
+    }
+
+    #filter-exports h4 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #7f8c8d;
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .export-section {
+      margin-bottom: 1rem;
+    }
+
+    .export-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #34495e;
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .export-badge {
+      background: #3498db;
+      color: white;
+      padding: 0.125rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.625rem;
+      font-weight: 600;
+    }
+
+    .export-content {
+      background: #2c3e50;
+      color: #ecf0f1;
+      padding: 0.75rem;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .export-content.json {
+      color: #2ecc71;
+    }
+
+    .btn-toggle-filter {
+      background: #9b59b6;
+    }
+
+    .btn-toggle-filter:hover {
+      background: #8e44ad;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>ZenGrid Demo</h1>
     <p>High-performance virtual scrolling with 100,000 rows</p>
+    <p style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.8;">
+      <strong>Modes:</strong> <span id="mode-indicator">Loading...</span>
+    </p>
   </header>
 
   <div id="controls">
     <button id="btn-refresh">Refresh Grid</button>
     <button id="btn-random">Random Data</button>
+    <button id="btn-toggle-filter" class="btn-toggle-filter">🔍 Filters</button>
+    <button id="btn-toggle-pagination" style="background: #e67e22;">📄 Pagination Mode</button>
     <button id="btn-scroll-top">Scroll to Top</button>
     <button id="btn-scroll-bottom">Scroll to Bottom</button>
     <button id="btn-scroll-middle">Scroll to Middle</button>
+    <button id="btn-toggle-sort-mode">Sort: Frontend</button>
+    <select id="loading-template-select" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.875rem;">
+      <option value="simple">Loading: Simple</option>
+      <option value="animated">Loading: Animated</option>
+      <option value="modern" selected>Loading: Modern</option>
+      <option value="skeleton">Loading: Skeleton</option>
+    </select>
+    <button id="btn-simulate-load" style="background: #9b59b6;">Simulate Load</button>
 
     <div id="stats">
       <div class="stat">
@@ -193,12 +490,129 @@
         <span class="stat-label">Render Time</span>
         <span class="stat-value" id="stat-render">0ms</span>
       </div>
+      <div class="stat">
+        <span class="stat-label">Cache Hit Rate</span>
+        <span class="stat-value" id="stat-cache">0%</span>
+      </div>
     </div>
   </div>
 
   <div id="fps-monitor">FPS: --</div>
 
-  <div id="grid-container"></div>
+  <!-- Filter Panel -->
+  <div id="filter-panel">
+    <div id="filter-content">
+      <div class="filter-header">
+        <h3>Advanced Filters</h3>
+        <div class="filter-actions">
+          <button id="btn-apply-filters" style="background: #3498db; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem;">Apply Filters</button>
+          <button id="btn-clear-filters" style="background: #95a5a6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem;">Clear All</button>
+        </div>
+      </div>
+
+      <!-- Advanced Filter Info -->
+      <div style="background: #e3f2fd; border: 1px solid #90caf9; border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">
+        <div style="font-size: 0.875rem; font-weight: 600; color: #1976d2; margin-bottom: 0.5rem;">
+          💡 Advanced Filtering
+        </div>
+        <div style="font-size: 0.75rem; color: #555; line-height: 1.5;">
+          • Use <strong>AND/OR toggle</strong> between conditions to build complex filters<br>
+          • <strong>AND</strong>: Both conditions must be true (e.g., Salary ≥ 100 AND Salary ≤ 500)<br>
+          • <strong>OR</strong>: Either condition can be true (e.g., Status = "Active" OR Status = "Remote")
+        </div>
+      </div>
+
+      <div id="filter-rows"></div>
+
+      <button class="btn-add-filter" id="btn-add-filter">+ Add Filter</button>
+
+      <!-- Smart Warnings -->
+      <div id="filter-warning" style="display: none; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 6px; padding: 1rem; margin-top: 1rem;">
+        <div style="font-size: 0.875rem; font-weight: 600; color: #721c24; margin-bottom: 0.5rem;">
+          ⚠️ Warning - Impossible Filter Detected:
+        </div>
+        <div id="filter-warning-content" style="font-size: 0.75rem; color: #721c24;"></div>
+      </div>
+
+      <!-- Filter Preview -->
+      <div id="filter-preview" style="display: none; background: #d1ecf1; border: 1px solid #bee5eb; border-radius: 6px; padding: 1rem; margin-top: 1rem;">
+        <div style="font-size: 0.875rem; font-weight: 600; color: #0c5460; margin-bottom: 0.5rem;">
+          ✅ Active Filter Preview:
+        </div>
+        <div id="filter-preview-content" style="font-size: 0.75rem; color: #0c5460;"></div>
+      </div>
+
+      <!-- Filter Exports -->
+      <div id="filter-exports">
+        <h4>📤 Exported Filter Formats (Backend-Ready)</h4>
+
+        <div class="export-section">
+          <div class="export-label">
+            <span>REST Query String</span>
+            <span class="export-badge">GET</span>
+          </div>
+          <div class="export-content" id="export-rest">No filters applied</div>
+        </div>
+
+        <div class="export-section">
+          <div class="export-label">
+            <span>GraphQL Where Clause</span>
+            <span class="export-badge">GQL</span>
+          </div>
+          <div class="export-content json" id="export-graphql">No filters applied</div>
+        </div>
+
+        <div class="export-section">
+          <div class="export-label">
+            <span>SQL WHERE Clause</span>
+            <span class="export-badge">SQL</span>
+          </div>
+          <div class="export-content" id="export-sql">No filters applied</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="grid-wrapper">
+    <div id="grid-header">
+      <div id="grid-header-canvas"></div>
+    </div>
+    <div id="grid-container"></div>
+
+    <!-- Pagination Controls -->
+    <div id="pagination-controls" style="display: none; padding: 1rem; border-top: 1px solid #ddd; background: #f8f9fa;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button id="btn-first-page" style="padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem;">⏮️ First</button>
+          <button id="btn-prev-page" style="padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem;">◀️ Previous</button>
+          <span id="page-info" style="font-size: 0.875rem; font-weight: 600; color: #2c3e50; padding: 0 1rem;">Page 1 of 1</span>
+          <button id="btn-next-page" style="padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem;">Next ▶️</button>
+          <button id="btn-last-page" style="padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem;">Last ⏭️</button>
+        </div>
+
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <label style="font-size: 0.875rem; color: #7f8c8d;">Page Size:</label>
+            <select id="page-size-select" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.875rem;">
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100" selected>100</option>
+              <option value="200">200</option>
+              <option value="500">500</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <label style="font-size: 0.875rem; color: #7f8c8d;">Go to page:</label>
+            <input id="goto-page-input" type="number" min="1" style="width: 80px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.875rem;" />
+            <button id="btn-goto-page" style="padding: 0.5rem 1rem; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem;">Go</button>
+          </div>
+
+          <span id="total-records" style="font-size: 0.875rem; color: #7f8c8d;">Total: 0 records</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <footer>
     Built with ZenGrid v0.1.0 | 60 FPS virtual scrolling | Minimal memory footprint

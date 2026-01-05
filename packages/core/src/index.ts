@@ -45,6 +45,10 @@ export type {
   ConditionalStyle,
 } from './rendering/renderers';
 
+// Rendering - Cache
+export type { IRendererCache, RendererCacheConfig, CachedRenderContent } from './rendering/cache';
+export { RendererCache } from './rendering/cache';
+
 // Data layer
 export type { DataAccessor } from './data/data-accessor';
 export type { IndexMap, IndexMapOptions } from './data/index-map';

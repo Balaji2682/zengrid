@@ -128,25 +128,41 @@ export class FilterCompiler {
       case 'greaterThan':
         return (val: any) => {
           if (val == null) return false;
-          return Number(val) > Number(value);
+          const numVal = Number(val);
+          const numFilter = Number(value);
+          // Validate both conversions succeeded
+          if (isNaN(numVal) || isNaN(numFilter)) return false;
+          return numVal > numFilter;
         };
 
       case 'lessThan':
         return (val: any) => {
           if (val == null) return false;
-          return Number(val) < Number(value);
+          const numVal = Number(val);
+          const numFilter = Number(value);
+          // Validate both conversions succeeded
+          if (isNaN(numVal) || isNaN(numFilter)) return false;
+          return numVal < numFilter;
         };
 
       case 'greaterThanOrEqual':
         return (val: any) => {
           if (val == null) return false;
-          return Number(val) >= Number(value);
+          const numVal = Number(val);
+          const numFilter = Number(value);
+          // Validate both conversions succeeded
+          if (isNaN(numVal) || isNaN(numFilter)) return false;
+          return numVal >= numFilter;
         };
 
       case 'lessThanOrEqual':
         return (val: any) => {
           if (val == null) return false;
-          return Number(val) <= Number(value);
+          const numVal = Number(val);
+          const numFilter = Number(value);
+          // Validate both conversions succeeded
+          if (isNaN(numVal) || isNaN(numFilter)) return false;
+          return numVal <= numFilter;
         };
 
       case 'blank':
@@ -154,6 +170,44 @@ export class FilterCompiler {
 
       case 'notBlank':
         return (val: any) => val != null && String(val).trim() !== '';
+
+      case 'between':
+        // Expects value to be [min, max] array
+        return (val: any) => {
+          if (val == null || !Array.isArray(value) || value.length !== 2) return false;
+          const numVal = Number(val);
+          const min = Number(value[0]);
+          const max = Number(value[1]);
+          if (isNaN(numVal) || isNaN(min) || isNaN(max)) return false;
+          return numVal >= min && numVal <= max;
+        };
+
+      case 'in':
+        // Expects value to be an array
+        return (val: any) => {
+          if (!Array.isArray(value)) return false;
+          return value.includes(val);
+        };
+
+      case 'notIn':
+        // Expects value to be an array
+        return (val: any) => {
+          if (!Array.isArray(value)) return true;
+          return !value.includes(val);
+        };
+
+      case 'regex':
+        // Expects value to be a regex pattern string
+        return (val: any) => {
+          if (val == null) return false;
+          try {
+            const regex = new RegExp(String(value), 'i');
+            return regex.test(String(val));
+          } catch (err) {
+            console.warn(`Invalid regex pattern: ${value}`, err);
+            return false;
+          }
+        };
 
       default:
         console.warn(`Unknown filter operator: ${operator}`);

@@ -7,10 +7,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "node --no-warnings server/server.js",
+    "dev:all": "concurrently -n SERVER,VITE -c blue,green \"node server/server.js\" \"vite\""
   },
   "devDependencies": {
-    "vite": "^5.0.0",
-    "typescript": "^5.9.3"
+    "concurrently": "^9.2.1",
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "puppeteer": "^24.34.0",
+    "typescript": "^5.9.3",
+    "vite": "^5.0.0"
   }
 }

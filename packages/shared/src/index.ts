@@ -71,6 +71,57 @@ export type {
 } from './data-structures/disjoint-set';
 export { DisjointSetUtils } from './data-structures/disjoint-set';
 
+export { IndexMap } from './data-structures/index-map';
+export type {
+  IIndexMap,
+  IndexMapEntry,
+  IndexMapOptions,
+} from './data-structures/index-map';
+
+export { IntervalTree } from './data-structures/interval-tree';
+export type {
+  IIntervalTree,
+  Interval,
+  IntervalData,
+  IntervalTreeOptions,
+} from './data-structures/interval-tree';
+export { IntervalUtils } from './data-structures/interval-tree';
+
+export { RTree } from './data-structures/rtree';
+export type {
+  IRTree,
+  RTreeData,
+  RTreeOptions,
+  RTreeSearchResult,
+  RTreeStats,
+} from './data-structures/rtree';
+
+export { Trie } from './data-structures/trie';
+export type {
+  ITrie,
+  ITrieNode,
+  TrieOptions,
+  TrieSearchResult,
+} from './data-structures/trie';
+
+export { DependencyGraph } from './data-structures/dependency-graph';
+export type {
+  IDependencyGraph,
+  NodeId,
+  Dependency,
+  DependencyGraphOptions,
+  TopologicalSortResult,
+  GraphStats,
+} from './data-structures/dependency-graph';
+
+export { SuffixArray } from './data-structures/suffix-array';
+export type {
+  ISuffixArray,
+  SuffixArrayOptions,
+  SuffixSearchResult,
+  SuffixArrayStats,
+} from './data-structures/suffix-array';
+
 // Algorithms
 export {
   binarySearch,
@@ -109,6 +160,41 @@ export type {
   ThrottledFunction,
   RAFBatchScheduler,
 } from './utils/timing.interface';
+
+// Patterns
+export {
+  EventEmitter,
+  Subject,
+  StateMachine,
+  BaseCoordinator,
+  Factory,
+  SingletonFactory,
+  Mediator,
+  MediatedComponent,
+  EventMediator,
+  ObjectPool,
+  KeyedObjectPool,
+  resolveOperationMode,
+  OperationModeManager,
+} from './patterns';
+
+export type {
+  IEventEmitter,
+  IObserver,
+  ISubject,
+  IStateMachine,
+  StateMachineOptions,
+  TransitionHandler,
+  ICoordinator,
+  IFactory,
+  IMediator,
+  IObjectPool,
+  ObjectPoolOptions,
+  ObjectPoolStats,
+  OperationMode,
+  ResolvedOperationMode,
+  OperationModeConfig,
+} from './patterns';
 
 // Version
 export const VERSION = '0.1.0';

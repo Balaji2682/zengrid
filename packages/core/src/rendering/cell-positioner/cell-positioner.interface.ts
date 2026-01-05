@@ -2,6 +2,7 @@ import type { CellRef, ColumnDef } from '../../types';
 import type { VirtualScroller } from '../virtual-scroller';
 import type { CellPool } from '../cell-pool';
 import type { RendererRegistry } from '../renderers';
+import type { IRendererCache } from '../cache';
 
 /**
  * Options for creating a CellPositioner
@@ -21,6 +22,11 @@ export interface CellPositionerOptions {
    * RendererRegistry instance for renderer lookup
    */
   registry: RendererRegistry;
+
+  /**
+   * Renderer cache instance (optional)
+   */
+  cache?: IRendererCache;
 
   /**
    * Function to get cell data value

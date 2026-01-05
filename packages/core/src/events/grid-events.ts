@@ -136,6 +136,62 @@ export interface GridEvents {
     rowsHidden: number;
   };
 
+  /**
+   * Emitted when filters are exported to backend-friendly formats
+   * Contains all export formats (REST, GraphQL, SQL) from a single filter state
+   *
+   * @example
+   * ```typescript
+   * grid.on('filter:export', (event) => {
+   *   // REST
+   *   fetch(`/api/users?${event.rest.queryString}`);
+   *
+   *   // GraphQL
+   *   graphqlClient.query({
+   *     query: GET_USERS,
+   *     variables: { where: event.graphql.where }
+   *   });
+   *
+   *   // SQL
+   *   db.query(
+   *     `SELECT * FROM users WHERE ${event.sql.whereClause}`,
+   *     event.sql.positionalParams
+   *   );
+   * });
+   * ```
+   */
+  'filter:export': {
+    /** Field-based filter state */
+    state: import('../features/filtering/types').FieldFilterState;
+    /** REST export (query strings, params) */
+    rest: import('../features/filtering/adapters/types').RESTFilterExport;
+    /** GraphQL export (where clause, variables) */
+    graphql: import('../features/filtering/adapters/types').GraphQLFilterExport;
+    /** SQL export (WHERE clause, params) */
+    sql: import('../features/filtering/adapters/types').SQLFilterExport;
+    /** Previous filter state */
+    previousState: import('../features/filtering/types').FieldFilterState;
+  };
+
+  'filter:start': {
+    timestamp: number;
+    filter: import('../types').FilterExpression;
+  };
+
+  'filter:end': {
+    timestamp: number;
+    resultCount: number;
+  };
+
+  'filter:error': {
+    timestamp: number;
+    error: Error;
+  };
+
+  'filter:clear': {
+    timestamp: number;
+  };
+
   // Focus events
   'focus:change': {
     cell: CellRef | null;
@@ -207,6 +263,22 @@ export interface GridEvents {
       oldValue: any;
       newValue: any;
     }>;
+  };
+
+  // Loading events
+  'loading:start': {
+    timestamp: number;
+    message?: string;
+  };
+
+  'loading:end': {
+    timestamp: number;
+    duration: number;
+  };
+
+  'loading:progress': {
+    progress: number; // 0-100
+    message?: string;
   };
 
   'destroy': {

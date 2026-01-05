@@ -4,6 +4,7 @@ import type {
 } from './cell-positioner.interface';
 import type { CellRef, VisibleRange } from '../../types';
 import type { RenderParams } from '../renderers';
+import { RendererCache } from '../cache';
 
 /**
  * CellPositioner - Orchestrates cell rendering
@@ -31,6 +32,7 @@ export class CellPositioner implements ICellPositioner {
   private scroller: CellPositionerOptions['scroller'];
   private pool: CellPositionerOptions['pool'];
   private registry: CellPositionerOptions['registry'];
+  private cache: CellPositionerOptions['cache'];
   private getData: CellPositionerOptions['getData'];
   private getRowData: CellPositionerOptions['getRowData'];
   private getColumn: CellPositionerOptions['getColumn'];
@@ -45,6 +47,7 @@ export class CellPositioner implements ICellPositioner {
     this.scroller = options.scroller;
     this.pool = options.pool;
     this.registry = options.registry;
+    this.cache = options.cache;
     this.getData = options.getData;
     this.getRowData = options.getRowData;
     this.getColumn = options.getColumn;
@@ -134,7 +137,39 @@ export class CellPositioner implements ICellPositioner {
       isEditing: this.isEditing(row, col),
     };
 
-    // Render or update
+    // Generate cache key
+    const cacheKey = this.cache
+      ? RendererCache.generateKey(row, col, value, rendererName, {
+          isSelected: params.isSelected,
+          isActive: params.isActive,
+          isEditing: params.isEditing,
+        })
+      : null;
+
+    // Check cache before rendering
+    if (cacheKey && this.cache) {
+      const cached = this.cache.get(cacheKey);
+      if (cached) {
+        // Use cached content
+        element.innerHTML = cached.html;
+
+        // Apply cached classes
+        if (cached.classes) {
+          cached.classes.forEach((cls) => element.classList.add(cls));
+        }
+
+        this.renderedCells.set(key, rendererName);
+
+        // Apply state classes
+        element.classList.toggle('zg-cell-selected', params.isSelected);
+        element.classList.toggle('zg-cell-active', params.isActive);
+        element.classList.toggle('zg-cell-editing', params.isEditing);
+
+        return;
+      }
+    }
+
+    // Render or update (cache miss or no cache)
     const lastRenderer = this.renderedCells.get(key);
     if (lastRenderer !== rendererName || !lastRenderer) {
       // Renderer changed or first render - destroy old and render new
@@ -147,6 +182,15 @@ export class CellPositioner implements ICellPositioner {
     } else {
       // Same renderer - just update
       renderer.update(element, params);
+    }
+
+    // Cache the rendered content
+    if (cacheKey && this.cache) {
+      const rendererClass = renderer.getCellClass?.(params);
+      this.cache.set(cacheKey, {
+        html: element.innerHTML,
+        classes: rendererClass ? [rendererClass] : undefined,
+      });
     }
 
     // Apply state classes
