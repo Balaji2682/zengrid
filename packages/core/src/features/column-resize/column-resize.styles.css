@@ -1,0 +1,30 @@
+/**
+ * Column Resize Styles
+ *
+ * Default styles for column resize feature.
+ * Applications can override these by providing more specific selectors.
+ */
+
+/* Resize Handle */
+.zg-resize-handle {
+  width: 6px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 100;
+  pointer-events: auto;
+  transition: background 0.15s ease;
+}
+
+.zg-resize-handle:hover,
+.zg-resize-handle.active {
+  background: rgba(33, 150, 243, 0.6);
+}
+
+/* Resize Preview Line */
+.zg-resize-preview {
+  width: 2px;
+  background: #2196f3;
+  box-shadow: 0 0 4px rgba(33, 150, 243, 0.6);
+  pointer-events: none;
+  z-index: 1000;
+}

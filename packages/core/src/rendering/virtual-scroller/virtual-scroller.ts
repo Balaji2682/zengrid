@@ -191,4 +191,12 @@ export class VirtualScroller implements IVirtualScroller {
   get viewportHeight(): number {
     return this.vpHeight;
   }
+
+  getWidthProvider(): WidthProvider {
+    return this.widthProvider;
+  }
+
+  getHeightProvider(): HeightProvider {
+    return this.heightProvider;
+  }
 }

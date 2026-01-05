@@ -1,5 +1,6 @@
 import { Grid } from '../../../packages/core/src/grid';
 import '../../../packages/core/src/features/loading/loading.styles.css';
+import '../../../packages/core/src/features/column-resize/column-resize.styles.css';
 import { PaginationDemo } from './pagination-demo';
 
 /**
@@ -169,18 +170,18 @@ function main() {
   // Loading template state
   let loadingTemplate: 'simple' | 'animated' | 'modern' | 'skeleton' | 'overlay' = 'modern';
 
-  // Define columns with configurable widths
+  // Define columns with configurable widths and resize constraints
   const columns = [
-    { field: 'id', header: 'ID', width: 80, renderer: 'number', sortable: true },
-    { field: 'name', header: 'Name', width: 200, renderer: 'text', sortable: true },
-    { field: 'department', header: 'Department', width: 150, renderer: 'text', sortable: true },
-    { field: 'salary', header: 'Salary', width: 120, renderer: 'number', sortable: true },
-    { field: 'years', header: 'Years', width: 80, renderer: 'number', sortable: true },
-    { field: 'status', header: 'Status', width: 100, renderer: 'text', sortable: true },
-    { field: 'email', header: 'Email', width: 220, renderer: 'text', sortable: true },
-    { field: 'phone', header: 'Phone', width: 140, renderer: 'text', sortable: true },
-    { field: 'score', header: 'Score', width: 80, renderer: 'number', sortable: true },
-    { field: 'notes', header: 'Notes', width: 300, renderer: 'text', sortable: true },
+    { field: 'id', header: 'ID', width: 80, renderer: 'number', sortable: true, minWidth: 50, maxWidth: 150 },
+    { field: 'name', header: 'Name', width: 200, renderer: 'text', sortable: true, minWidth: 100, maxWidth: 400 },
+    { field: 'department', header: 'Department', width: 150, renderer: 'text', sortable: true, minWidth: 100 },
+    { field: 'salary', header: 'Salary', width: 120, renderer: 'number', sortable: true, minWidth: 80, maxWidth: 200 },
+    { field: 'years', header: 'Years', width: 80, renderer: 'number', sortable: true, minWidth: 60 },
+    { field: 'status', header: 'Status', width: 100, renderer: 'text', sortable: true, minWidth: 80 },
+    { field: 'email', header: 'Email', width: 220, renderer: 'text', sortable: true, minWidth: 150, maxWidth: 350 },
+    { field: 'phone', header: 'Phone', width: 140, renderer: 'text', sortable: true, minWidth: 100 },
+    { field: 'score', header: 'Score', width: 80, renderer: 'number', sortable: true, minWidth: 60 },
+    { field: 'notes', header: 'Notes', width: 300, renderer: 'text', sortable: true, minWidth: 150, maxWidth: 500 },
   ];
 
   // Extract column widths for variable width provider
@@ -260,6 +261,22 @@ function main() {
     });
   }
 
+  // Function to update header widths after column resize
+  function updateHeaderWidths(widths: number[]) {
+    if (!headerCanvas) return;
+
+    let xOffset = 0;
+    headerCells.forEach((headerCell, idx) => {
+      const newWidth = widths[idx];
+      headerCell.style.left = `${xOffset}px`;
+      headerCell.style.width = `${newWidth}px`;
+      xOffset += newWidth;
+    });
+    headerCanvas.style.width = `${xOffset}px`;
+
+    console.log(`📏 Header widths updated:`, widths);
+  }
+
   // Conditional sort handler - delegates based on current sortMode
   async function handleSortRequest(sortState: any[]): Promise<void> {
     // In frontend mode, this handler won't be called (auto mode detects undefined handler)
@@ -308,6 +325,7 @@ function main() {
 
   // Create grid with variable column widths
   console.time('Grid Initialization');
+  let gridRef: Grid | null = null; // Forward reference for scroll handler
   const grid = new Grid(container, {
     rowCount: ROW_COUNT,
     colCount: COL_COUNT,
@@ -347,13 +365,35 @@ function main() {
       showOverlay: true,
       overlayOpacity: 0.5,
     },
+    // Column Resize Configuration
+    enableColumnResize: true,
+    columnResize: {
+      resizeZoneWidth: 6,        // Detection zone width
+      defaultMinWidth: 30,        // Global minimum
+      defaultMaxWidth: 600,       // Global maximum
+      autoFitSampleSize: 100,     // Sample 100 rows for auto-fit
+      autoFitPadding: 16,         // Add 16px padding to auto-fit
+      showHandles: true,          // Show visual resize handles
+      showPreview: true,          // Show preview line during drag
+    },
     // Sync header scrolling
     onScroll: (scrollTop, scrollLeft) => {
       if (headerCanvas) {
         headerCanvas.style.transform = `translateX(-${scrollLeft}px)`;
       }
+      // Update resize handle positions on scroll
+      if (gridRef) {
+        gridRef.updateColumnResizeHandles();
+      }
+    },
+    // Column width persistence
+    onColumnWidthsChange: (widths) => {
+      console.log('💾 Column widths changed:', widths);
+      localStorage.setItem('zengrid-column-widths', JSON.stringify(widths));
+      updateHeaderWidths(widths);
     },
   });
+  gridRef = grid; // Set the reference for the scroll handler
   console.timeEnd('Grid Initialization');
 
   // Set data
@@ -361,12 +401,18 @@ function main() {
   grid.setData(data);
   console.timeEnd('Set Data');
 
-  // Initial render
+  // Initial render (this initializes the resize manager)
   console.time('Initial Render');
   const renderStart = performance.now();
   grid.render();
   const renderTime = performance.now() - renderStart;
   console.timeEnd('Initial Render');
+
+  // Attach column resize to header (IMPORTANT: do this AFTER render)
+  if (headerCanvas) {
+    grid.attachColumnResize(headerCanvas);
+    console.log('✅ Column resize attached to header');
+  }
 
   console.log(`✅ Initial render took ${renderTime.toFixed(2)}ms`);
 
@@ -383,6 +429,11 @@ function main() {
   // Initialize FPS monitor
   const fpsElement = document.getElementById('fps-monitor')!;
   const fpsMonitor = new FPSMonitor(fpsElement);
+
+  // Column resize event listeners
+  grid.on('column:resize', (event) => {
+    console.log(`📏 Column ${event.column} resized: ${event.oldWidth}px → ${event.newWidth}px`);
+  });
 
   // Initialize Pagination Demo
   const paginationDemo = new PaginationDemo(grid);
@@ -433,6 +484,25 @@ function main() {
 
   document.getElementById('btn-scroll-middle')!.addEventListener('click', () => {
     grid.scrollToCell(Math.floor(ROW_COUNT / 2), 0);
+  });
+
+  // Column resize buttons
+  document.getElementById('btn-auto-fit-all')!.addEventListener('click', () => {
+    console.log('↔️ Auto-fitting all columns...');
+    const start = performance.now();
+    grid.autoFitAllColumns();
+    const time = performance.now() - start;
+    console.log(`✅ Auto-fit completed in ${time.toFixed(2)}ms`);
+  });
+
+  document.getElementById('btn-reset-widths')!.addEventListener('click', () => {
+    console.log('⟲ Resetting column widths to defaults...');
+    const defaultWidths = columns.map(col => col.width);
+    defaultWidths.forEach((width, col) => {
+      grid.resizeColumn(col, width);
+    });
+    localStorage.removeItem('zengrid-column-widths');
+    console.log('✅ Column widths reset to defaults');
   });
 
   // Mode toggle button - shows current modes and explains how to change
@@ -555,6 +625,12 @@ BACKEND MODE:
   console.log('\n🎉 ZenGrid Demo Ready!');
   console.log('Try scrolling to see the virtual scrolling in action.');
   console.log('Watch the FPS monitor in the top-right corner.');
+  console.log('\n📏 Column Resize Features:');
+  console.log('   - Drag column borders to resize');
+  console.log('   - Double-click column border to auto-fit to content');
+  console.log('   - Click "Auto-Fit All" to auto-fit all columns');
+  console.log('   - Click "Reset Widths" to restore default widths');
+  console.log('   - Column widths are persisted to localStorage');
 
   // ==================== FILTER UI ====================
   setupFilterUI(grid, columns);

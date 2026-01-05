@@ -58,6 +58,21 @@ export { createIndexMap, createIdentityIndexMap } from './data/index-map';
 export type { RowSorter, SortOptions, NullPosition } from './features/sorting';
 export { SingleColumnSorter } from './features/sorting';
 
+// Features - Column Resize
+export type {
+  ColumnConstraints,
+  ColumnResizeOptions,
+  ResizeState,
+  ResizeZoneResult,
+  AutoFitCalculatorOptions,
+} from './features/column-resize';
+export {
+  ColumnResizeManager,
+  AutoFitCalculator,
+  ResizeHandleRenderer,
+  ResizePreview,
+} from './features/column-resize';
+
 // Selection utilities
 export { normalizeRange, mergeRanges, containsCell, rangesIntersect } from './selection/range-utils';
 export { createHitTester } from './selection/hit-tester';

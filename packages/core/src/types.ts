@@ -16,6 +16,9 @@ export interface ColumnDef {
   sortable?: boolean;
   editable?: boolean;
   filterable?: boolean;
+  resizable?: boolean; // Enable resize for this column (default: true)
+  minWidth?: number; // Minimum width constraint
+  maxWidth?: number; // Maximum width constraint
 }
 
 /**
@@ -123,12 +126,39 @@ export interface GridOptions {
    */
   loading?: LoadingConfig;
 
+  // Column Resize
+  /**
+   * Enable column resize feature (default: true)
+   */
+  enableColumnResize?: boolean;
+
+  /**
+   * Column resize configuration
+   */
+  columnResize?: {
+    /** Width of resize handle detection zone in pixels (default: 6) */
+    resizeZoneWidth?: number;
+    /** Default minimum width for all columns (default: 30) */
+    defaultMinWidth?: number;
+    /** Default maximum width for all columns (default: Infinity) */
+    defaultMaxWidth?: number;
+    /** Maximum rows to sample for auto-fit (default: 100) */
+    autoFitSampleSize?: number;
+    /** Padding to add to auto-fit width (default: 16) */
+    autoFitPadding?: number;
+    /** Show visual resize handles (default: true) */
+    showHandles?: boolean;
+    /** Show preview line during drag (default: true) */
+    showPreview?: boolean;
+  };
+
   // Event callbacks
   onScroll?: (scrollTop: number, scrollLeft: number) => void;
   onCellClick?: (row: number, col: number) => void;
   onCellDoubleClick?: (row: number, col: number) => void;
   onSelectionChange?: (selection: CellRange[]) => void;
   onPageChange?: (page: number, pageSize: number) => void;
+  onColumnWidthsChange?: (widths: number[]) => void; // Called when column widths change (for persistence)
 }
 
 /**

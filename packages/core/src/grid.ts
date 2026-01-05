@@ -22,6 +22,8 @@ import { AutofillManager } from './features/autofill/autofill-manager';
 import { SortManager } from './features/sorting/sort-manager';
 import { Paginator } from './features/pagination';
 import { LoadingIndicator } from './features/loading';
+import { ColumnResizeManager } from './features/column-resize';
+import type { ColumnConstraints } from './features/column-resize';
 
 /**
  * Grid - Main grid class that integrates all components
@@ -74,6 +76,7 @@ export class Grid {
   private filterManager: FilterManager | null = null;
   private paginator: Paginator | null = null;
   private loadingIndicator: LoadingIndicator | null = null;
+  private resizeManager: ColumnResizeManager | null = null;
 
   // Filter state cache
   private cachedVisibleRows: number[] | null = null;
@@ -1200,6 +1203,161 @@ export class Grid {
   }
 
   /**
+   * Initialize column resize manager
+   */
+  private initializeColumnResize(): void {
+    if (!this.scroller) return;
+
+    // Build column constraints from column definitions
+    const columnConstraints = new Map<number, ColumnConstraints>();
+    if (this.options.columns) {
+      this.options.columns.forEach((col, index) => {
+        if (col.minWidth !== undefined || col.maxWidth !== undefined) {
+          columnConstraints.set(index, {
+            minWidth: col.minWidth,
+            maxWidth: col.maxWidth,
+          });
+        }
+      });
+    }
+
+    this.resizeManager = new ColumnResizeManager({
+      events: this.events,
+      widthProvider: this.scroller.getWidthProvider(),
+      colCount: this.options.colCount,
+      getColOffset: (col) => this.scroller!.getColOffset(col),
+      getColWidth: (col) => this.scroller!.getColWidth(col),
+      onWidthChange: (col, width) => {
+        this.scroller!.updateColWidth(col, width);
+        this.updateCanvasSize();
+        this.refresh();
+      },
+      getValue: (row, col) => this.dataAccessor?.getValue(row, col),
+      rowCount: this.options.rowCount,
+      resizeZoneWidth: this.options.columnResize?.resizeZoneWidth,
+      defaultConstraints: {
+        minWidth: this.options.columnResize?.defaultMinWidth,
+        maxWidth: this.options.columnResize?.defaultMaxWidth,
+      },
+      columnConstraints,
+      autoFitSampleSize: this.options.columnResize?.autoFitSampleSize,
+      autoFitPadding: this.options.columnResize?.autoFitPadding,
+      showHandles: this.options.columnResize?.showHandles,
+      showPreview: this.options.columnResize?.showPreview,
+      onColumnWidthsChange: this.options.onColumnWidthsChange,
+      getScrollLeft: () => this.scrollContainer?.scrollLeft ?? 0,
+      getViewportHeight: () => this.scrollContainer?.clientHeight ?? 0,
+    });
+
+    // Note: Do NOT auto-attach here.
+    // Application should call attachColumnResize() with header element
+  }
+
+  /**
+   * Attach column resize to a header element
+   * Call this after creating your header to enable column resizing on it
+   *
+   * @param headerElement - The header container element (usually contains column header cells)
+   *
+   * @example
+   * ```typescript
+   * const grid = new Grid(container, options);
+   * const header = document.getElementById('my-header');
+   * grid.attachColumnResize(header);
+   * ```
+   */
+  attachColumnResize(headerElement: HTMLElement): void {
+    if (!this.resizeManager) {
+      console.warn('Column resize is not enabled. Set enableColumnResize: true in GridOptions');
+      return;
+    }
+    this.resizeManager.attach(headerElement);
+  }
+
+  /**
+   * Detach column resize from header
+   */
+  detachColumnResize(): void {
+    this.resizeManager?.detach();
+  }
+
+  /**
+   * Update column resize handle positions
+   * Call this when scrolling to keep handles in sync
+   */
+  updateColumnResizeHandles(): void {
+    this.resizeManager?.updateHandles();
+  }
+
+  /**
+   * Update canvas size after column resize
+   */
+  private updateCanvasSize(): void {
+    if (this.canvas && this.scroller) {
+      this.canvas.style.width = `${this.scroller.getTotalWidth()}px`;
+      this.canvas.style.height = `${this.scroller.getTotalHeight()}px`;
+    }
+  }
+
+  /**
+   * Resize a column programmatically
+   */
+  resizeColumn(col: number, width: number): void {
+    if (!this.scroller) return;
+
+    const oldWidth = this.scroller.getColWidth(col);
+    this.scroller.updateColWidth(col, width);
+    this.updateCanvasSize();
+    this.refresh();
+
+    // Emit event
+    if (oldWidth !== width) {
+      this.events.emit('column:resize', {
+        column: col,
+        oldWidth,
+        newWidth: width,
+      });
+    }
+
+    // Call persistence callback
+    if (this.options.onColumnWidthsChange) {
+      const widths: number[] = [];
+      for (let c = 0; c < this.options.colCount; c++) {
+        widths.push(this.scroller.getColWidth(c));
+      }
+      this.options.onColumnWidthsChange(widths);
+    }
+  }
+
+  /**
+   * Auto-fit a column to its content
+   */
+  autoFitColumn(col: number): void {
+    this.resizeManager?.autoFitColumn(col);
+  }
+
+  /**
+   * Auto-fit all columns to their content
+   */
+  autoFitAllColumns(): void {
+    this.resizeManager?.autoFitAllColumns();
+  }
+
+  /**
+   * Set column width constraints
+   */
+  setColumnConstraints(col: number, constraints: ColumnConstraints): void {
+    this.resizeManager?.setColumnConstraints(col, constraints);
+  }
+
+  /**
+   * Check if resize is in progress
+   */
+  isResizing(): boolean {
+    return this.resizeManager?.isResizing() ?? false;
+  }
+
+  /**
    * Destroy the grid and clean up resources
    */
   destroy(): void {
@@ -1254,6 +1412,12 @@ export class Grid {
     if (this.loadingIndicator) {
       this.loadingIndicator.destroy();
       this.loadingIndicator = null;
+    }
+
+    // Destroy resize manager
+    if (this.resizeManager) {
+      this.resizeManager.destroy();
+      this.resizeManager = null;
     }
 
     // Clear state
@@ -1389,6 +1553,11 @@ export class Grid {
         return this.state.editingCell?.row === row && this.state.editingCell?.col === col;
       },
     });
+
+    // Initialize column resize manager
+    if (this.options.enableColumnResize !== false && this.scrollContainer) {
+      this.initializeColumnResize();
+    }
   }
 
   /**

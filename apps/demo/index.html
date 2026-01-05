@@ -151,6 +151,9 @@
       opacity: 0.8;
     }
 
+    /* Column Resize Styles - Imported from library CSS */
+    /* Override defaults here if needed (without !important) */
+
     #grid-container {
       flex: 1;
       position: relative;
@@ -450,7 +453,7 @@
 <body>
   <header>
     <h1>ZenGrid Demo</h1>
-    <p>High-performance virtual scrolling with 100,000 rows</p>
+    <p>High-performance virtual scrolling with 100,000 rows • Drag column borders to resize • Double-click to auto-fit</p>
     <p style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.8;">
       <strong>Modes:</strong> <span id="mode-indicator">Loading...</span>
     </p>
@@ -461,6 +464,8 @@
     <button id="btn-random">Random Data</button>
     <button id="btn-toggle-filter" class="btn-toggle-filter">🔍 Filters</button>
     <button id="btn-toggle-pagination" style="background: #e67e22;">📄 Pagination Mode</button>
+    <button id="btn-auto-fit-all" style="background: #27ae60;">↔️ Auto-Fit All</button>
+    <button id="btn-reset-widths" style="background: #95a5a6;">⟲ Reset Widths</button>
     <button id="btn-scroll-top">Scroll to Top</button>
     <button id="btn-scroll-bottom">Scroll to Bottom</button>
     <button id="btn-scroll-middle">Scroll to Middle</button>
