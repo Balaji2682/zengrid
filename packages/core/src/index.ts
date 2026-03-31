@@ -7,6 +7,14 @@
 
 // Core types
 export * from './types';
+export type {
+  FilterAst,
+  FilterAstNode,
+  FilterAstTarget,
+  FilterValueType,
+  QueryPaginationState,
+  QueryState,
+} from './types';
 
 // Data structures (re-exported from shared)
 export { SparseMatrix } from '@zengrid/shared';
@@ -357,7 +365,14 @@ export type {
 export { yieldToMain, processInChunks } from './reactive';
 
 // Plugin System (Phase 2)
-export type { GridPlugin, PluginDisposable, GridApi as GridApiInterface } from './reactive';
+export type {
+  GridPlugin,
+  PluginDisposable,
+  GridApi as GridApiInterface,
+  GridOptionsChange,
+  GridOptionsListener,
+  GridPluginSetupContext,
+} from './reactive';
 export { PluginHost } from './grid/plugin-host';
 export { GridApiImpl } from './grid/grid-api';
 

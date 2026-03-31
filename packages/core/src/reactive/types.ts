@@ -1,4 +1,5 @@
 import type { Signal, ReadonlySignal } from '@preact/signals-core';
+import type { GridOptions } from '../types';
 
 export interface SignalMetadata {
   name: string;
@@ -33,6 +34,15 @@ export interface AsyncComputedOptions {
   debounceMs?: number;
   onError?: (error: Error) => void;
 }
+
+export interface GridOptionsChange {
+  currentOptions: GridOptions;
+  previousOptions: GridOptions;
+  changedKeys: Array<keyof GridOptions>;
+  patch: Partial<GridOptions>;
+}
+
+export type GridOptionsListener = (change: GridOptionsChange) => void;
 
 export type ActionHandler = (...args: any[]) => void | { undo: () => void };
 
@@ -101,7 +111,12 @@ export interface GridStore {
   set(key: string, value: unknown): void;
   getUnphased(key: string): unknown;
   getRow(dataIndex: number): unknown;
-  action(name: string, handler: ActionHandler, owner: string, meta?: { invalidates?: string[] }): void;
+  action(
+    name: string,
+    handler: ActionHandler,
+    owner: string,
+    meta?: { invalidates?: string[] }
+  ): void;
   exec(name: string, ...args: unknown[]): void | { undo: () => void };
   asyncComputed(
     key: string,
@@ -120,11 +135,19 @@ export interface PluginDisposable {
   teardown: Array<() => void>;
 }
 
+export interface GridPluginSetupContext {
+  options: GridOptions;
+  getOptions(): GridOptions;
+  getOptionsSnapshot(): GridOptions;
+  updateOptions(patch: Partial<GridOptions>): GridOptionsChange | null;
+  subscribeOptions(listener: GridOptionsListener): () => void;
+}
+
 export interface GridPlugin {
   name: string;
   phase: number;
   dependencies?: string[];
-  setup(store: GridStore, api: GridApi): PluginDisposable | void;
+  setup(store: GridStore, api: GridApi, context: GridPluginSetupContext): PluginDisposable | void;
   dispose?(): void;
 }
 

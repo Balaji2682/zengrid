@@ -124,6 +124,36 @@ describe('Grid Backend Data Mode', () => {
     );
   });
 
+  it('syncs the live grid options rowCount after backend loads', async () => {
+    const onDataRequest = jest.fn().mockResolvedValue({
+      data: [
+        ['Alice', 10],
+        ['Bob', 20],
+      ],
+      totalRows: 2,
+      startRow: 0,
+      endRow: 2,
+    });
+
+    grid = new Grid(container, {
+      rowCount: 0,
+      colCount: 2,
+      rowHeight: 30,
+      colWidth: 100,
+      dataMode: 'backend',
+      onDataRequest,
+    });
+
+    grid.render();
+    await flushAsyncWork();
+
+    const getOptions = grid.getGridApi().getMethod('options', 'get') as (() => {
+      rowCount: number;
+    }) | undefined;
+
+    expect(getOptions?.().rowCount).toBe(2);
+  });
+
   it('shows an empty state when the backend returns no rows', async () => {
     const onDataRequest = jest.fn().mockResolvedValue({
       data: [],

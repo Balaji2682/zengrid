@@ -1,5 +1,5 @@
 import { timsortIndices } from '@zengrid/shared';
-import type { SortState, SortDirection, SortMode } from '../../types';
+import type { SortState, SortDirection } from '../../types';
 import type { EventEmitter } from '../../events/event-emitter';
 import type { GridEvents } from '../../events/grid-events';
 import { createIndexMap, type IndexMap } from '../../data/index-map';
@@ -35,22 +35,6 @@ export interface SortManagerOptions {
    * Initial sort state
    */
   initialSort?: SortState[];
-
-  /**
-   * Sort mode - determines where sorting is executed
-   * - 'frontend': Sort data in memory (default)
-   * - 'backend': Emit events only, application handles sorting
-   * - 'auto': Use backend mode if onSortRequest is provided, otherwise frontend
-   * @default 'frontend'
-   */
-  sortMode?: SortMode;
-
-  /**
-   * Callback for backend sorting
-   * Called when sortMode is 'backend' or 'auto' (with callback present)
-   * Application should fetch sorted data and call grid.setData()
-   */
-  onSortRequest?: (sortState: SortState[]) => Promise<void> | void;
 }
 
 /**
@@ -84,21 +68,12 @@ export class SortManager {
   private enableMultiSort: boolean;
   private sortState: SortState[] = [];
   private indexMap: IndexMap | null = null;
-  private sortMode: SortMode;
-  private onSortRequest?: (sortState: SortState[]) => Promise<void> | void;
 
   constructor(options: SortManagerOptions) {
     this.rowCount = options.rowCount;
     this.events = options.events;
     this.getValue = options.getValue;
     this.enableMultiSort = options.enableMultiSort ?? false;
-    this.onSortRequest = options.onSortRequest;
-
-    // Determine sort mode
-    this.sortMode = options.sortMode ?? 'frontend';
-    if (this.sortMode === 'auto') {
-      this.sortMode = this.onSortRequest ? 'backend' : 'frontend';
-    }
 
     if (options.initialSort) {
       this.sortState = normalizeSortState(options.initialSort);
@@ -261,50 +236,6 @@ export class SortManager {
       if (cancelled) return;
     }
 
-    // Backend mode - delegate to application
-    if (this.sortMode === 'backend') {
-      this.indexMap = null; // Clear index map for backend sorting
-
-      if (this.onSortRequest) {
-        // Call backend sort handler
-        const result = this.onSortRequest(this.sortState);
-
-        // Handle promise if async
-        if (result && typeof result === 'object' && 'then' in result) {
-          result
-            .then(() => {
-              // Emit after-sort event when backend completes
-              if (this.events) {
-                this.events.emit('sort:afterSort', {
-                  sortState: this.sortState,
-                  rowsAffected: this.rowCount,
-                });
-              }
-            })
-            .catch((error) => {
-              if (this.events) {
-                this.events.emit('error', {
-                  message: 'Backend sort failed',
-                  error,
-                  context: { sortState: this.sortState },
-                });
-              }
-            });
-        } else {
-          // Synchronous backend handler
-          if (this.events) {
-            this.events.emit('sort:afterSort', {
-              sortState: this.sortState,
-              rowsAffected: this.rowCount,
-            });
-          }
-        }
-      }
-
-      return;
-    }
-
-    // Frontend mode - execute sort in memory
     if (this.sortState.length === 1) {
       const primarySort = this.sortState[0];
       const sorter = new SingleColumnSorter();
@@ -440,14 +371,6 @@ export class SortManager {
     if (this.sortState.length > 0) {
       this.executeSort();
     }
-  }
-
-  /**
-   * Get current sort mode (resolved from 'auto')
-   * Returns the actual mode being used: 'frontend' or 'backend'
-   */
-  getSortMode(): 'frontend' | 'backend' {
-    return this.sortMode as 'frontend' | 'backend'; // Always resolved in constructor
   }
 
   /**

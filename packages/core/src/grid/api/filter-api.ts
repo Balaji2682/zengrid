@@ -2,6 +2,7 @@ import type { FilterExpression, FilterModel } from '../../types';
 import type { FilterExportResult } from '../../features/filtering/adapters/types';
 import type { FieldFilterState } from '../../features/filtering/types';
 import type { SlimGridContext } from '../grid-context';
+import { resolveQueryExecutionMode } from '../query-mode';
 
 export interface FilterApi {
   set(column: number, operator: string, value: any): void;
@@ -83,10 +84,7 @@ export function createFilterApi(ctx: SlimGridContext): FilterApi {
       if (!hasFilterPlugin()) return 'frontend';
       const api = ctx.gridApi.getMethod('filter', 'getMode');
       if (api) return api() as 'frontend' | 'backend';
-
-      const mode = ctx.options.filterMode ?? 'frontend';
-      if (mode === 'auto') return ctx.options.onFilterRequest ? 'backend' : 'frontend';
-      return mode;
+      return resolveQueryExecutionMode(ctx.options.dataMode);
     },
 
     setQuick(query: string, columns?: number[]): void {

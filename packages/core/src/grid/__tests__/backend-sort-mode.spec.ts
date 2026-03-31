@@ -33,11 +33,16 @@ afterEach(() => {
 });
 
 describe('Grid Backend Sort Mode', () => {
-  it('delegates backend sort requests for frontend data mode', async () => {
-    const onSortRequest = jest.fn().mockResolvedValue(undefined);
+  it('serializes single-column backend sort state into onDataRequest for backend data mode', async () => {
+    const onDataRequest = jest.fn().mockResolvedValue({
+      data: [['Alice', 10]],
+      totalRows: 1,
+      startRow: 0,
+      endRow: 1,
+    });
 
     grid = new Grid(container, {
-      rowCount: 3,
+      rowCount: 1,
       colCount: 2,
       rowHeight: 30,
       colWidth: 100,
@@ -45,36 +50,38 @@ describe('Grid Backend Sort Mode', () => {
         { field: 'name', header: 'Name' },
         { field: 'score', header: 'Score' },
       ],
-      sortMode: 'backend',
-      onSortRequest,
+      dataMode: 'backend',
+      onDataRequest,
     });
 
-    grid.setData([
-      ['Alice', 10],
-      ['Bob', 20],
-      ['Cara', 15],
-    ]);
     grid.render();
     await flushAsyncWork();
 
-    grid.sort.apply([{ column: 1, direction: 'desc' }]);
+    grid.sort.apply([{ column: 0, direction: 'asc' }]);
     await flushAsyncWork();
 
-    expect(grid.sort.getMode()).toBe('backend');
-    expect(onSortRequest).toHaveBeenCalledTimes(1);
-    expect(onSortRequest).toHaveBeenCalledWith(
-      [{ column: 1, direction: 'desc' }],
-      {
-        sortState: [{ column: 1, direction: 'desc' }],
-        sort: [
-          { column: 1, field: 'score', direction: 'desc', sortIndex: 0 },
-        ],
-      }
+    expect(onDataRequest).toHaveBeenCalledTimes(2);
+    expect(onDataRequest.mock.calls[1][0]).toEqual(
+      expect.objectContaining({
+        query: expect.objectContaining({
+          version: 1,
+          filter: null,
+          sort: [{ column: 0, field: 'name', direction: 'asc', sortIndex: 0 }],
+        }),
+      })
     );
   });
 
-  it('serializes multi-column backend sort requests for frontend data mode', async () => {
-    const onSortRequest = jest.fn().mockResolvedValue(undefined);
+  it('serializes multi-column backend sort requests into onDataRequest', async () => {
+    const onDataRequest = jest.fn().mockResolvedValue({
+      data: [
+        ['Alice', 10],
+        ['Bob', 20],
+      ],
+      totalRows: 2,
+      startRow: 0,
+      endRow: 2,
+    });
 
     grid = new Grid(container, {
       rowCount: 4,
@@ -85,16 +92,10 @@ describe('Grid Backend Sort Mode', () => {
         { field: 'name', header: 'Name' },
         { field: 'score', header: 'Score' },
       ],
-      sortMode: 'backend',
-      onSortRequest,
+      dataMode: 'backend',
+      onDataRequest,
     });
 
-    grid.setData([
-      ['Bob', 20],
-      ['Alice', 20],
-      ['Cara', 10],
-      ['Alice', 10],
-    ]);
     grid.render();
     await flushAsyncWork();
 
@@ -105,87 +106,19 @@ describe('Grid Backend Sort Mode', () => {
     await flushAsyncWork();
 
     expect(grid.sort.getMode()).toBe('backend');
-    expect(onSortRequest).toHaveBeenCalledTimes(1);
-    expect(onSortRequest).toHaveBeenCalledWith(
-      [
-        { column: 0, direction: 'asc', sortIndex: 0 },
-        { column: 1, direction: 'desc', sortIndex: 1 },
-      ],
-      {
-        sortState: [
-          { column: 0, direction: 'asc', sortIndex: 0 },
-          { column: 1, direction: 'desc', sortIndex: 1 },
-        ],
-        sort: [
-          { column: 0, field: 'name', direction: 'asc', sortIndex: 0 },
-          { column: 1, field: 'score', direction: 'desc', sortIndex: 1 },
-        ],
-      }
+    expect(onDataRequest).toHaveBeenCalledTimes(2);
+    expect(onDataRequest.mock.calls[1][0]).toEqual(
+      expect.objectContaining({
+        query: expect.objectContaining({
+          version: 1,
+          filter: null,
+          sort: [
+            { column: 0, field: 'name', direction: 'asc', sortIndex: 0 },
+            { column: 1, field: 'score', direction: 'desc', sortIndex: 1 },
+          ],
+        }),
+      })
     );
-  });
-
-
-  it('uses the same normalized multi-sort state for frontend runtime and backend callback requests', async () => {
-    const columns = [
-      { field: 'name', header: 'Name' },
-      { field: 'score', header: 'Score' },
-    ];
-    const data = [
-      ['Bob', 20],
-      ['Alice', 20],
-      ['Cara', 10],
-      ['Alice', 10],
-    ];
-    const inputState = [
-      { column: 1, direction: 'desc' as const, sortIndex: 1 },
-      { column: 0, direction: 'asc' as const, sortIndex: 0 },
-    ];
-
-    const frontendGrid = new Grid(container, {
-      rowCount: 4,
-      colCount: 2,
-      rowHeight: 30,
-      colWidth: 100,
-      columns,
-    });
-
-    frontendGrid.setData(data);
-    frontendGrid.render();
-    await flushAsyncWork();
-
-    frontendGrid.sort.apply(inputState);
-    await flushAsyncWork();
-
-    const frontendState = frontendGrid.sort.getState();
-    frontendGrid.destroy();
-
-    const onSortRequest = jest.fn().mockResolvedValue(undefined);
-    grid = new Grid(container, {
-      rowCount: 4,
-      colCount: 2,
-      rowHeight: 30,
-      colWidth: 100,
-      columns,
-      sortMode: 'backend',
-      onSortRequest,
-    });
-
-    grid.setData(data);
-    grid.render();
-    await flushAsyncWork();
-
-    grid.sort.apply(inputState);
-    await flushAsyncWork();
-
-    expect(onSortRequest).toHaveBeenCalledTimes(1);
-    expect(onSortRequest.mock.calls[0][0]).toEqual(frontendState);
-    expect(onSortRequest.mock.calls[0][1]).toEqual({
-      sortState: frontendState,
-      sort: [
-        { column: 0, field: 'name', direction: 'asc', sortIndex: 0 },
-        { column: 1, field: 'score', direction: 'desc', sortIndex: 1 },
-      ],
-    });
   });
 
   it('uses the same normalized multi-sort state for frontend runtime and backend data requests', async () => {
@@ -220,6 +153,10 @@ describe('Grid Backend Sort Mode', () => {
     await flushAsyncWork();
 
     const frontendState = frontendGrid.sort.getState();
+    expect(frontendState).toEqual([
+      { column: 0, direction: 'asc', sortIndex: 0 },
+      { column: 1, direction: 'desc', sortIndex: 1 },
+    ]);
     frontendGrid.destroy();
 
     const onDataRequest = jest.fn().mockResolvedValue({
@@ -236,7 +173,6 @@ describe('Grid Backend Sort Mode', () => {
       colWidth: 100,
       columns,
       dataMode: 'backend',
-      sortMode: 'backend',
       onDataRequest,
     });
 
@@ -249,53 +185,14 @@ describe('Grid Backend Sort Mode', () => {
     expect(onDataRequest).toHaveBeenCalledTimes(2);
     expect(onDataRequest.mock.calls[1][0]).toEqual(
       expect.objectContaining({
-        sortState: frontendState,
-        sort: [
-          { column: 0, field: 'name', direction: 'asc', sortIndex: 0 },
-          { column: 1, field: 'score', direction: 'desc', sortIndex: 1 },
-        ],
-      })
-    );
-  });
-
-  it('serializes backend sort state into onDataRequest for backend data mode', async () => {
-    const onDataRequest = jest.fn().mockResolvedValue({
-      data: [['Alice', 10]],
-      totalRows: 1,
-      startRow: 0,
-      endRow: 1,
-    });
-    const onSortRequest = jest.fn();
-
-    grid = new Grid(container, {
-      rowCount: 1,
-      colCount: 2,
-      rowHeight: 30,
-      colWidth: 100,
-      columns: [
-        { field: 'name', header: 'Name' },
-        { field: 'score', header: 'Score' },
-      ],
-      dataMode: 'backend',
-      sortMode: 'backend',
-      onDataRequest,
-      onSortRequest,
-    });
-
-    grid.render();
-    await flushAsyncWork();
-
-    grid.sort.apply([{ column: 0, direction: 'asc' }]);
-    await flushAsyncWork();
-
-    expect(onSortRequest).not.toHaveBeenCalled();
-    expect(onDataRequest).toHaveBeenCalledTimes(2);
-    expect(onDataRequest.mock.calls[1][0]).toEqual(
-      expect.objectContaining({
-        sortState: [{ column: 0, direction: 'asc' }],
-        sort: [
-          { column: 0, field: 'name', direction: 'asc', sortIndex: 0 },
-        ],
+        query: expect.objectContaining({
+          version: 1,
+          filter: null,
+          sort: [
+            { column: 0, field: 'name', direction: 'asc', sortIndex: 0 },
+            { column: 1, field: 'score', direction: 'desc', sortIndex: 1 },
+          ],
+        }),
       })
     );
   });

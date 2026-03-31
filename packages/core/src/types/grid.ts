@@ -6,8 +6,8 @@ import type { RendererCacheConfig } from '../rendering/cache';
 import type { OperationMode } from '@zengrid/shared';
 import type { CellRef, CellRange } from './cell';
 import type { ColumnDef, SortIcons } from './column';
-import type { SortRequest, SortState } from './sort';
-import type { FilterModel, FilterExpression } from './filter';
+import type { SortState } from './sort';
+import type { FilterModel } from './filter';
 import type { DataLoadRequest, DataLoadResponse } from './data';
 import type { PaginationConfig } from './pagination';
 import type { LoadingConfig } from './loading';
@@ -58,72 +58,19 @@ export interface GridOptions {
   /**
    * Data loading mode
    * - 'frontend': All data loaded in memory (default)
-   * - 'backend': Data loaded on-demand via onDataRequest
-   * - 'auto': Use backend if onDataRequest provided, else frontend
+   * - 'backend': Data loaded on-demand and query state delegated via onDataRequest
+   * - 'auto': Use backend loading if onDataRequest is present, while sort/filter stay frontend
    */
   dataMode?: OperationMode;
-
-  /**
-   * Sort mode
-   * - 'frontend': Sort in memory using IndexMap (default)
-   * - 'backend': Delegate sorting to server via onSortRequest
-   * - 'auto': Use backend if onSortRequest provided, else frontend
-   */
-  sortMode?: OperationMode;
-
-  /**
-   * Filter mode
-   * - 'frontend': Filter in memory (default)
-   * - 'backend': Delegate filtering to server via onFilterRequest
-   * - 'auto': Use backend if onFilterRequest provided, else frontend
-   */
-  filterMode?: OperationMode;
 
   // Callbacks for backend operations
   /**
    * Backend data loading callback
-   * Called when dataMode is 'backend' or 'auto' (with callback present)
-   * Application should fetch data based on request parameters
+   * Called when dataMode is 'backend' or when auto mode resolves to backend loading.
+   * In explicit backend mode, request.query includes canonical sort/filter/pagination state.
+   * In auto mode, request.query is limited to pagination/range state so sort/filter remain frontend.
    */
   onDataRequest?: (request: DataLoadRequest) => Promise<DataLoadResponse>;
-
-  /**
-   * Backend sorting callback
-   * Called when sortMode is 'backend' or 'auto' (with callback present)
-   * Application should fetch sorted data and call grid.setData()
-   *
-   * The first argument preserves the raw grid sort state for backward compatibility.
-   * The second argument provides a serialized backend request with field names when columns are configured.
-   */
-  onSortRequest?: (sortState: SortState[], request?: SortRequest) => Promise<void> | void;
-
-  /**
-   * Backend filtering callback
-   * Called when filterMode is 'backend' or 'auto' (with callback present)
-   * Application should fetch filtered data and call grid.setData()
-   *
-   * Receives FilterExpression which contains:
-   * - SQL query metadata (if using SQL-like syntax)
-   * - Column-based filter models
-   * - Quick filter state
-   * - Field-based filter state and backend export helpers when columns are configured
-   *
-   * @example SQL-like filtering
-   * ```typescript
-   * onFilterRequest: async (filter) => {
-   *   if (filter.type === 'sql') {
-   *     // Backend receives: filter.sql = "age > ? AND status = ?"
-   *     // Backend receives: filter.params = [18, 'active']
-   *     const data = await api.get('/data', {
-   *       filter: filter.sql,
-   *       params: filter.params
-   *     });
-   *     grid.setData(data);
-   *   }
-   * }
-   * ```
-   */
-  onFilterRequest?: (filterExpression: FilterExpression) => Promise<void> | void;
 
   // Pagination
   /**

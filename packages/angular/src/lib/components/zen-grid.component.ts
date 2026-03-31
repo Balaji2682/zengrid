@@ -104,14 +104,14 @@ export class ZenGridComponent {
   // --- Core Inputs ---
   readonly rowCount = input.required<number>();
   readonly colCount = input.required<number>();
-  readonly rowHeight = input<number | number[]>(30, {
-    transform: (value) => this.markExplicitInput('rowHeight', value),
+  readonly rowHeight = input<number | number[], number | number[]>(30, {
+    transform: (value: number | number[]) => this.markExplicitInput('rowHeight', value),
   });
-  readonly colWidth = input<number | number[]>(100, {
-    transform: (value) => this.markExplicitInput('colWidth', value),
+  readonly colWidth = input<number | number[], number | number[]>(100, {
+    transform: (value: number | number[]) => this.markExplicitInput('colWidth', value),
   });
-  readonly columns = input<ColumnDef[]>([], {
-    transform: (value) => this.markExplicitInput('columns', value),
+  readonly columns = input<ColumnDef[], ColumnDef[]>([], {
+    transform: (value: ColumnDef[]) => this.markExplicitInput('columns', value),
   });
 
   // --- Feature Inputs ---
@@ -126,13 +126,9 @@ export class ZenGridComponent {
 
   // --- Mode Inputs ---
   readonly dataMode = input<OperationMode | undefined>(undefined);
-  readonly sortMode = input<OperationMode | undefined>(undefined);
-  readonly filterMode = input<OperationMode | undefined>(undefined);
 
   // --- Backend Callback Inputs ---
   readonly onDataRequest = input<GridOptions['onDataRequest']>(undefined);
-  readonly onSortRequest = input<GridOptions['onSortRequest']>(undefined);
-  readonly onFilterRequest = input<GridOptions['onFilterRequest']>(undefined);
   readonly onLoadMoreRows = input<GridOptions['onLoadMoreRows']>(undefined);
 
   // --- Config Object Inputs ---
@@ -324,9 +320,7 @@ export class ZenGridComponent {
         ['enableA11y', this.enableA11y()],
         ['enableColumnResize', this.enableColumnResize()],
         ['enableColumnDrag', this.enableColumnDrag()],
-        ['dataMode', this.dataMode()],
-        ['sortMode', this.sortMode()],
-        ['filterMode', this.filterMode()],
+        ['dataMode', this.getConfiguredDataMode()],
         ['pagination', this.pagination()],
         ['loading', this.loading()],
         ['infiniteScrolling', this.infiniteScrolling()],
@@ -377,13 +371,17 @@ export class ZenGridComponent {
   private getResolvedDataMode(): 'frontend' | 'backend' {
     return resolveOperationMode(
       {
-        mode: this.dataMode() ?? (this.globalConfig?.['dataMode'] as OperationMode | undefined),
+        mode: this.getConfiguredDataMode(),
         callback:
           this.onDataRequest() ??
           (this.globalConfig?.['onDataRequest'] as GridOptions['onDataRequest'] | undefined),
       },
       { rowCount: this.rowCount() }
     );
+  }
+
+  private getConfiguredDataMode(): OperationMode | undefined {
+    return this.dataMode() ?? (this.globalConfig?.['dataMode'] as OperationMode | undefined);
   }
 
   private getResolvedRowHeight(): number | number[] {
@@ -530,12 +528,8 @@ export class ZenGridComponent {
     const enPool = this.enableCellPooling();
     const enResize = this.enableColumnResize();
     const enDrag = this.enableColumnDrag();
-    const dMode = this.dataMode();
-    const sMode = this.sortMode();
-    const fMode = this.filterMode();
+    const dMode = this.getConfiguredDataMode();
     const dReq = this.onDataRequest();
-    const sReq = this.onSortRequest();
-    const fReq = this.onFilterRequest();
     const loadMore = this.onLoadMoreRows();
     const pag = this.pagination();
     const load = this.loading();
@@ -567,11 +561,7 @@ export class ZenGridComponent {
     if (enResize !== undefined) opts.enableColumnResize = enResize;
     if (enDrag !== undefined) opts.enableColumnDrag = enDrag;
     if (dMode !== undefined) opts.dataMode = dMode;
-    if (sMode !== undefined) opts.sortMode = sMode;
-    if (fMode !== undefined) opts.filterMode = fMode;
     if (dReq !== undefined) opts.onDataRequest = dReq;
-    if (sReq !== undefined) opts.onSortRequest = sReq;
-    if (fReq !== undefined) opts.onFilterRequest = fReq;
     if (loadMore !== undefined) opts.onLoadMoreRows = loadMore;
     if (pag !== undefined) opts.pagination = pag;
     if (load !== undefined) opts.loading = load;

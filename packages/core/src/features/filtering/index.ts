@@ -8,10 +8,14 @@ export type { FilterPredicate } from './filter-compiler';
 export { ColumnFilter } from './column-filter';
 export type { ColumnFilterOptions } from './column-filter';
 
+export { FilterAstCompiler } from './filter-ast-compiler';
+export type { FilterAstRowPredicate } from './filter-ast-compiler';
+
 export { FilterManager } from './filter-manager';
 export type { FilterManagerOptions } from './filter-manager';
 
 export { FilterAutocomplete } from './filter-autocomplete';
+export * from './filter-ast';
 export { FilterOptimizer } from './filter-optimizer';
 export { SubstringFilter } from './substring-filter';
 

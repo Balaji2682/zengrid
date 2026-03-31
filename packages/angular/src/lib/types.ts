@@ -11,13 +11,25 @@ import type {
   ColumnStateSnapshot,
   GridExportOptions,
   SortState,
+  SortDescriptor,
   FilterModel,
+  FilterAst,
+  FilterAstNode,
+  FilterAstTarget,
+  FilterValueType,
+  QueryState,
+  QueryPaginationState,
+  DataLoadRequest,
+  DataLoadResponse,
   RenderParams,
   EditorParams,
   HeaderRenderParams,
   GridPlugin,
   GridStore,
   GridApiInterface,
+  GridPluginSetupContext,
+  GridOptionsChange,
+  GridOptionsListener,
   CellRenderer,
   CellEditor,
   HeaderRenderer,
@@ -35,13 +47,25 @@ export type {
   ColumnStateSnapshot,
   GridExportOptions,
   SortState,
+  SortDescriptor,
   FilterModel,
+  FilterAst,
+  FilterAstNode,
+  FilterAstTarget,
+  FilterValueType,
+  QueryState,
+  QueryPaginationState,
+  DataLoadRequest,
+  DataLoadResponse,
   RenderParams,
   EditorParams,
   HeaderRenderParams,
   GridPlugin,
   GridStore,
   GridApiInterface,
+  GridPluginSetupContext,
+  GridOptionsChange,
+  GridOptionsListener,
   CellRenderer,
   CellEditor,
   HeaderRenderer,
@@ -76,4 +100,8 @@ export interface ZenGridConfig {
 
 export type RendererInput = string | CellRenderer | TemplateRef<ZenCellTemplateContext> | Type<any>;
 export type EditorInput = string | CellEditor | TemplateRef<ZenEditorTemplateContext> | Type<any>;
-export type HeaderRendererInput = string | HeaderRenderer | TemplateRef<ZenHeaderTemplateContext> | Type<any>;
+export type HeaderRendererInput =
+  | string
+  | HeaderRenderer
+  | TemplateRef<ZenHeaderTemplateContext>
+  | Type<any>;

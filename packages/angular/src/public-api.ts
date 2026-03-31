@@ -44,13 +44,25 @@ export type {
   GridExportOptions,
   GridEvents,
   SortState,
+  SortDescriptor,
   FilterModel,
+  FilterAst,
+  FilterAstNode,
+  FilterAstTarget,
+  FilterValueType,
+  QueryState,
+  QueryPaginationState,
+  DataLoadRequest,
+  DataLoadResponse,
   RenderParams,
   EditorParams,
   HeaderRenderParams,
   GridPlugin,
   GridStore,
   GridApiInterface,
+  GridPluginSetupContext,
+  GridOptionsChange,
+  GridOptionsListener,
   CellRenderer,
   CellEditor,
   HeaderRenderer,
@@ -222,11 +234,7 @@ export type {
 
 // ─── Re-export Sorting ──────────────────────────────────────────────────────
 
-export {
-  SingleColumnSorter,
-  MultiColumnSorter,
-  SortStateManager,
-} from '@zengrid/core';
+export { SingleColumnSorter, MultiColumnSorter, SortStateManager } from '@zengrid/core';
 
 export type { SortOptions, NullPosition } from '@zengrid/core';
 
@@ -279,10 +287,7 @@ export type {
 
 // ─── Re-export Viewport & Scroll ────────────────────────────────────────────
 
-export {
-  ScrollModel,
-  ViewportModel,
-} from '@zengrid/core';
+export { ScrollModel, ViewportModel } from '@zengrid/core';
 
 export type {
   ScrollState,
@@ -320,17 +325,11 @@ export {
   isDateInRange,
 } from '@zengrid/core';
 
-export type {
-  DatetimeTheme,
-} from '@zengrid/core';
+export type { DatetimeTheme } from '@zengrid/core';
 
 // ─── Re-export Keyboard & Accessibility ─────────────────────────────────────
 
-export {
-  KeyboardNavigator,
-  ARIAManager,
-  FocusManager,
-} from '@zengrid/core';
+export { KeyboardNavigator, ARIAManager, FocusManager } from '@zengrid/core';
 
 export type {
   KeyboardNavigatorOptions,

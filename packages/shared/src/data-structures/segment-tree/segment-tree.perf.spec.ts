@@ -1,5 +1,5 @@
 import { SegmentTree } from './segment-tree';
-import { AggregationType } from './segment-tree.interface';
+import { AggregationType, SegmentTreeUtils } from './segment-tree.interface';
 
 /**
  * Performance Benchmark Suite for SegmentTree
@@ -23,6 +23,14 @@ interface BenchmarkResult {
 }
 
 const results: BenchmarkResult[] = [];
+const BYTES_PER_NUMBER = 8;
+
+function estimateSegmentTreeMemory(size: number): number {
+  const treeSize = SegmentTreeUtils.getTreeSize(size);
+
+  // SegmentTree stores the source array plus tree and lazy arrays.
+  return (size + treeSize + treeSize) * BYTES_PER_NUMBER;
+}
 
 function benchmark(name: string, dataset: string, fn: () => void, iterations = 1): BenchmarkResult {
   // Warm up
@@ -650,9 +658,8 @@ describe('SegmentTree Performance Benchmarks', () => {
         expect(tree.size).toBe(SIZE);
       });
 
-      // Tree should use O(4n) space
-      // For 1K numbers: ~4K numbers × 8 bytes = ~32KB
-      expect(result.memory).toBeLessThan(100 * 1024); // < 100KB
+      const estimatedBytes = estimateSegmentTreeMemory(SIZE);
+      expect(result.memory).toBeLessThan(Math.max(estimatedBytes * 2, 100 * 1024));
     });
 
     it('should measure memory for large tree', () => {
@@ -665,9 +672,8 @@ describe('SegmentTree Performance Benchmarks', () => {
         expect(tree.size).toBe(SIZE);
       });
 
-      // Tree should use O(4n) space
-      // For 100K numbers: ~400K numbers × 8 bytes = ~3.2MB
-      expect(result.memory).toBeLessThan(10 * 1024 * 1024); // < 10MB
+      const estimatedBytes = estimateSegmentTreeMemory(SIZE);
+      expect(result.memory).toBeLessThan(estimatedBytes * 2);
     });
   });
 });

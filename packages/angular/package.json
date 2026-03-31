@@ -1,18 +1,38 @@
 {
   "name": "@zengrid/angular",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Angular wrapper for ZenGrid high-performance data grid",
+  "keywords": [
+    "angular",
+    "grid",
+    "data-grid",
+    "spreadsheet",
+    "virtual-scroll"
+  ],
+  "author": "ZenGrid Team",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zengrid-dev/zengrid.git",
+    "directory": "packages/angular"
+  },
+  "bugs": {
+    "url": "https://github.com/zengrid-dev/zengrid/issues"
+  },
+  "homepage": "https://github.com/zengrid-dev/zengrid#readme",
   "peerDependencies": {
     "@angular/core": ">=18.0.0",
     "@angular/common": ">=18.0.0",
     "@angular/forms": ">=18.0.0",
-    "@zengrid/core": ">=1.0.0"
+    "@zengrid/core": ">=1.2.1"
   },
   "dependencies": {
-    "@zengrid/core": "workspace:*",
-    "@zengrid/shared": "workspace:*",
+    "@zengrid/core": "1.2.1",
+    "@zengrid/shared": "1.2.1",
     "tslib": "^2.3.0"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  }
 }

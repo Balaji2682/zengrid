@@ -1,5 +1,6 @@
 import type { SortState } from '../../types';
 import type { SlimGridContext } from '../grid-context';
+import { resolveQueryExecutionMode } from '../query-mode';
 
 export interface SortApi {
   apply(sortState: SortState[]): void;
@@ -60,10 +61,7 @@ export function createSortApi(ctx: SlimGridContext): SortApi {
       if (!hasSortPlugin()) return 'frontend';
       const getMode = ctx.gridApi.getMethod('sort', 'getMode');
       if (getMode) return getMode() as 'frontend' | 'backend';
-
-      const mode = ctx.options.sortMode ?? 'frontend';
-      if (mode === 'auto') return ctx.options.onSortRequest ? 'backend' : 'frontend';
-      return mode;
+      return resolveQueryExecutionMode(ctx.options.dataMode);
     },
   };
 }

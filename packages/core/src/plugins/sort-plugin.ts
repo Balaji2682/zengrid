@@ -1,14 +1,13 @@
 import type { GridPlugin, PluginDisposable } from '../reactive/types';
 import { SortManager } from '../features/sorting/sort-manager';
-import { buildSortRequest, normalizeSortState } from '../features/sorting/sort-request';
-import type { ColumnDef, SortRequest, SortState } from '../types';
+import { normalizeSortState } from '../features/sorting/sort-request';
+import type { ColumnDef, SortState } from '../types';
 import type { DataAccessor } from '../data/data-accessor/data-accessor.interface';
+import { resolveQueryExecutionMode } from '../grid/query-mode';
 
 export interface SortPluginOptions {
   enableMultiSort?: boolean;
   initialSort?: SortState[];
-  sortMode?: 'frontend' | 'backend';
-  onSortRequest?: (sortState: SortState[], request: SortRequest) => Promise<void> | void;
   columns?: ColumnDef[];
   usePipeline?: boolean;
 }
@@ -58,17 +57,15 @@ export function createSortPlugin(options?: SortPluginOptions): GridPlugin {
     name: 'sort',
     phase: 10,
     dependencies: ['core'],
-    setup(store, api): PluginDisposable {
+    setup(store, api, context): PluginDisposable {
       const usePipeline = options?.usePipeline !== false;
       const initialSort = normalizeSortState(options?.initialSort ?? []);
       const enableMultiSort = options?.enableMultiSort ?? false;
-      const resolvedSortMode = options?.sortMode ?? 'frontend';
 
       store.extend('sort.state', initialSort, 'sort');
       store.extend('pipeline.sort', undefined, 'sort', 10);
 
       let mgr: SortManager | null = null;
-      let backendRequestId = 0;
 
       if (usePipeline) {
         mgr = new SortManager({
@@ -82,67 +79,8 @@ export function createSortPlugin(options?: SortPluginOptions): GridPlugin {
         });
       }
 
-      function getDataMode(): 'frontend' | 'backend' {
-        const getMode = api.getMethod('data', 'getMode');
-        return getMode ? (getMode() as 'frontend' | 'backend') : 'frontend';
-      }
-
-      function runBackendSortRequest(sortState: SortState[]): void {
-        if (
-          resolvedSortMode !== 'backend' ||
-          typeof options?.onSortRequest !== 'function' ||
-          getDataMode() === 'backend'
-        ) {
-          return;
-        }
-
-        const request = buildSortRequest(sortState, options?.columns);
-        const requestId = ++backendRequestId;
-
-        try {
-          const result = options.onSortRequest(request.sortState, request);
-
-          if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
-            Promise.resolve(result)
-              .then(() => {
-                if (requestId !== backendRequestId) {
-                  return;
-                }
-
-                api.fireEvent('sort:afterSort', {
-                  sortState: request.sortState,
-                  rowsAffected: (store.get('rows.count') as number | undefined) ?? 0,
-                });
-              })
-              .catch((error) => {
-                if (requestId !== backendRequestId) {
-                  return;
-                }
-
-                const requestError =
-                  error instanceof Error ? error : new Error('Backend sort failed');
-                api.fireEvent('error', {
-                  message: 'Backend sort failed',
-                  error: requestError,
-                  context: { sortState: request.sortState, request },
-                });
-              });
-
-            return;
-          }
-
-          api.fireEvent('sort:afterSort', {
-            sortState: request.sortState,
-            rowsAffected: (store.get('rows.count') as number | undefined) ?? 0,
-          });
-        } catch (error) {
-          const requestError = error instanceof Error ? error : new Error('Backend sort failed');
-          api.fireEvent('error', {
-            message: 'Backend sort failed',
-            error: requestError,
-            context: { sortState: request.sortState, request },
-          });
-        }
+      function getQueryMode(): 'frontend' | 'backend' {
+        return resolveQueryExecutionMode(context.options.dataMode);
       }
 
       function syncToStore(): void {
@@ -167,14 +105,12 @@ export function createSortPlugin(options?: SortPluginOptions): GridPlugin {
             store.set('sort.state', next);
             store.set('pipeline.sort', undefined);
             api.fireEvent('sort:change', { sortState: next, previousSortState: prev });
-            runBackendSortRequest(next);
             return;
           }
 
           mgr.updateRowCount(store.get('rows.count') as number);
           mgr.toggleSort(column, additive);
           syncToStore();
-          runBackendSortRequest(mgr.getSortState());
           api.fireEvent('sort:change', {
             sortState: mgr.getSortState(),
             previousSortState: prev,
@@ -193,14 +129,12 @@ export function createSortPlugin(options?: SortPluginOptions): GridPlugin {
             store.set('sort.state', next);
             store.set('pipeline.sort', undefined);
             api.fireEvent('sort:change', { sortState: next, previousSortState: prev });
-            runBackendSortRequest(next);
             return;
           }
 
           mgr.updateRowCount(store.get('rows.count') as number);
           mgr.setSortState(next);
           syncToStore();
-          runBackendSortRequest(mgr.getSortState());
           api.fireEvent('sort:change', {
             sortState: mgr.getSortState(),
             previousSortState: prev,
@@ -221,7 +155,6 @@ export function createSortPlugin(options?: SortPluginOptions): GridPlugin {
           store.set('sort.state', []);
           store.set('pipeline.sort', undefined);
           api.fireEvent('sort:change', { sortState: [], previousSortState: prev });
-          runBackendSortRequest([]);
         },
         'sort'
       );
@@ -264,7 +197,7 @@ export function createSortPlugin(options?: SortPluginOptions): GridPlugin {
           return sortState.find((entry) => entry.column === column)?.direction ?? null;
         },
         getIcons: () => ({ asc: '▲', desc: '▼' }),
-        getMode: () => (getDataMode() === 'backend' ? 'backend' : resolvedSortMode),
+        getMode: () => getQueryMode(),
       });
 
       if (usePipeline && initialSort.length) {

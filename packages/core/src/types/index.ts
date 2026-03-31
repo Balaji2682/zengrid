@@ -7,6 +7,7 @@ export * from './cell';
 export * from './column';
 export * from './header';
 export * from './sort';
+export * from './query';
 export * from './filter';
 export * from './pagination';
 export * from './loading';

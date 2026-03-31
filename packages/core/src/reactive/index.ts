@@ -12,6 +12,9 @@ export type {
   GridPlugin,
   PluginDisposable,
   GridApi,
+  GridOptionsChange,
+  GridOptionsListener,
+  GridPluginSetupContext,
   AsyncState,
   AsyncComputedOptions,
 } from './types';

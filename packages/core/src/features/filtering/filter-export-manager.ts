@@ -5,13 +5,14 @@
  * Orchestrates adapters and handles conversions between column-based and field-based filters.
  */
 
-import type { ColumnDef, FilterModel, FilterOperator } from '../../types';
-import type {
-  FieldFilterState,
-  FieldFilterCondition,
-  StandardFilterOperator,
-  CustomOperator,
-} from './types';
+import type { ColumnDef, FilterModel } from '../../types';
+import {
+  buildFilterAstFromFieldState,
+  buildFilterAstFromModels,
+  projectFilterAstToFieldState,
+  projectFilterAstToModels,
+} from './filter-ast';
+import type { FieldFilterState, CustomOperator } from './types';
 import type { FilterExportResult } from './adapters/types';
 import type { FilterAdapter } from './adapters/adapter.interface';
 import { RESTFilterAdapter, type RESTAdapterOptions } from './adapters/rest-adapter';
@@ -132,39 +133,14 @@ export class FilterExportManager {
    * This enables backend-friendly exports using field names instead of indices
    */
   convertFromModels(models: FilterModel[]): FieldFilterState {
-    if (!models || models.length === 0) {
-      return {
-        root: null,
-        activeFields: [],
-        timestamp: Date.now(),
-      };
+    const ast = buildFilterAstFromModels(models, { columns: this.columns });
+    const result = projectFilterAstToFieldState(ast);
+
+    for (const warning of result.warnings) {
+      console.warn(`FilterExportManager: ${warning}`);
     }
 
-    const conditions: FieldFilterCondition[] = [];
-    const activeFields = new Set<string>();
-
-    for (const model of models) {
-      const field = this.indexToField.get(model.column);
-      if (!field) {
-        console.warn(`FilterExportManager: No field found for column ${model.column}`);
-        continue;
-      }
-
-      for (const condition of model.conditions) {
-        conditions.push({
-          field,
-          operator: this.mapOperatorToStandard(condition.operator),
-          value: condition.value,
-        });
-        activeFields.add(field);
-      }
-    }
-
-    return {
-      root: conditions.length > 0 ? { logic: 'AND', conditions } : null,
-      activeFields: Array.from(activeFields),
-      timestamp: Date.now(),
-    };
+    return result.state;
   }
 
   /**
@@ -173,41 +149,14 @@ export class FilterExportManager {
    * Reverse conversion for internal use
    */
   convertToModels(state: FieldFilterState): FilterModel[] {
-    if (!state.root) {
-      return [];
+    const ast = buildFilterAstFromFieldState(state, { columns: this.columns });
+    const result = projectFilterAstToModels(ast, { columns: this.columns });
+
+    for (const warning of result.warnings) {
+      console.warn(`FilterExportManager: ${warning}`);
     }
 
-    const models: FilterModel[] = [];
-    const columnConditions: Map<number, { operator: FilterOperator; value?: any }[]> = new Map();
-
-    // Group conditions by column
-    for (const condition of state.root.conditions) {
-      const columnIndex = this.fieldToIndex.get(condition.field);
-      if (columnIndex === undefined) {
-        console.warn(`FilterExportManager: No column found for field ${condition.field}`);
-        continue;
-      }
-
-      if (!columnConditions.has(columnIndex)) {
-        columnConditions.set(columnIndex, []);
-      }
-
-      columnConditions.get(columnIndex)!.push({
-        operator: this.mapOperatorToInternal(condition.operator),
-        value: condition.value,
-      });
-    }
-
-    // Build FilterModels
-    for (const [column, conditions] of columnConditions) {
-      models.push({
-        column,
-        conditions,
-        logic: state.root.logic,
-      });
-    }
-
-    return models;
+    return result.models;
   }
 
   /**
@@ -276,58 +225,6 @@ export class FilterExportManager {
   setColumns(columns: ColumnDef[]): void {
     this.columns = columns;
     this.buildFieldMappings();
-  }
-
-  /**
-   * Map internal operator to standard operator
-   */
-  private mapOperatorToStandard(internal: FilterOperator): StandardFilterOperator {
-    const mapping: Record<FilterOperator, StandardFilterOperator> = {
-      equals: 'eq',
-      notEquals: 'neq',
-      contains: 'contains',
-      notContains: 'notContains',
-      startsWith: 'startsWith',
-      endsWith: 'endsWith',
-      greaterThan: 'gt',
-      lessThan: 'lt',
-      greaterThanOrEqual: 'gte',
-      lessThanOrEqual: 'lte',
-      blank: 'isNull',
-      notBlank: 'isNotNull',
-      in: 'in',
-      notIn: 'notIn',
-      between: 'between',
-      regex: 'regex',
-    };
-
-    return mapping[internal] || 'eq';
-  }
-
-  /**
-   * Map standard operator to internal operator
-   */
-  private mapOperatorToInternal(standard: string): FilterOperator {
-    const mapping: Record<string, FilterOperator> = {
-      eq: 'equals',
-      neq: 'notEquals',
-      contains: 'contains',
-      notContains: 'notContains',
-      startsWith: 'startsWith',
-      endsWith: 'endsWith',
-      gt: 'greaterThan',
-      lt: 'lessThan',
-      gte: 'greaterThanOrEqual',
-      lte: 'lessThanOrEqual',
-      isNull: 'blank',
-      isNotNull: 'notBlank',
-      in: 'equals', // No direct mapping, default to equals
-      notIn: 'notEquals',
-      between: 'greaterThanOrEqual', // No direct mapping
-      regex: 'contains', // Approximate mapping
-    };
-
-    return mapping[standard] || 'equals';
   }
 
   /**

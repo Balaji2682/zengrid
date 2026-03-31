@@ -1,8 +1,8 @@
 {
   "name": "@zengrid/shared",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "14 advanced data structures and algorithms for high-performance grids",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.cjs.js",
   "module": "./dist/index.esm.js",
   "types": "./dist/index.d.ts",
   "sideEffects": false,
@@ -10,22 +10,7 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.esm.js",
-      "require": "./dist/index.cjs"
-    },
-    "./algorithms/*": {
-      "types": "./dist/algorithms/*/index.d.ts",
-      "import": "./dist/algorithms/*/index.esm.js",
-      "require": "./dist/algorithms/*/index.cjs"
-    },
-    "./data-structures/*": {
-      "types": "./dist/data-structures/*/index.d.ts",
-      "import": "./dist/data-structures/*/index.esm.js",
-      "require": "./dist/data-structures/*/index.cjs"
-    },
-    "./types": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/types/index.esm.js",
-      "require": "./dist/types/index.cjs"
+      "require": "./dist/index.cjs.js"
     }
   },
   "files": [
@@ -48,5 +33,8 @@
   "bugs": {
     "url": "https://github.com/zengrid-dev/zengrid/issues"
   },
-  "homepage": "https://github.com/zengrid-dev/zengrid#readme"
+  "homepage": "https://github.com/zengrid-dev/zengrid#readme",
+  "publishConfig": {
+    "access": "public"
+  }
 }

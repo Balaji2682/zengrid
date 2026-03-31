@@ -3,7 +3,9 @@ import { EventEmitter } from '../events/event-emitter';
 import type { GridEvents } from '../events/grid-events';
 
 function createBackendManager(
-  callback: (request: import('../types').DataLoadRequest) => Promise<import('../types').DataLoadResponse>
+  callback: (
+    request: import('../types').DataLoadRequest
+  ) => Promise<import('../types').DataLoadResponse>
 ): DataManager {
   return new DataManager({
     rowCount: 10,
@@ -49,5 +51,75 @@ describe('DataManager', () => {
     expect(receivedSignal).toBeDefined();
     expect(receivedSignal?.aborted).toBe(true);
     expect(manager.isDataLoading()).toBe(false);
+  });
+
+  it('coalesces identical range requests across distinct query objects', async () => {
+    let resolveRequest!: (value: import('../types').DataLoadResponse) => void;
+    const callback: (
+      request: import('../types').DataLoadRequest
+    ) => Promise<import('../types').DataLoadResponse> = jest.fn(
+      async () =>
+        await new Promise<import('../types').DataLoadResponse>((resolve) => {
+          resolveRequest = resolve;
+        })
+    );
+
+    const manager = createBackendManager(callback);
+
+    const firstLoad = manager.loadRange(0, 5, {
+      version: 1,
+      filter: {
+        version: 1,
+        root: {
+          kind: 'group',
+          logic: 'AND',
+          source: 'api',
+          children: [
+            {
+              kind: 'predicate',
+              source: 'api',
+              target: { column: 0 },
+              operator: 'eq',
+              value: 'active',
+            },
+          ],
+        },
+      },
+      pagination: { page: 0, pageSize: 5, offset: 0 },
+    });
+    const secondLoad = manager.loadRange(0, 5, {
+      version: 1,
+      filter: {
+        version: 1,
+        root: {
+          kind: 'group',
+          logic: 'AND',
+          source: 'api',
+          children: [
+            {
+              kind: 'predicate',
+              source: 'api',
+              target: { column: 0 },
+              operator: 'eq',
+              value: 'active',
+            },
+          ],
+        },
+      },
+      pagination: { page: 0, pageSize: 5, offset: 0 },
+    });
+
+    await Promise.resolve();
+
+    expect(callback).toHaveBeenCalledTimes(1);
+
+    resolveRequest({
+      data: [[1], [2], [3], [4], [5]],
+      startRow: 0,
+      endRow: 5,
+      totalRows: 10,
+    });
+
+    await Promise.all([firstLoad, secondLoad]);
   });
 });

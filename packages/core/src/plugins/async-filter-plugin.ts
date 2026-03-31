@@ -24,7 +24,6 @@ export function createAsyncFilterPlugin(options?: AsyncFilterPluginOptions): Gri
           const raw = store.get('rows.raw') as unknown[][];
           return raw[row]?.[col];
         },
-        mode: 'frontend',
       });
 
       // Async computed: reads filter.state + pipeline.sort reactively,

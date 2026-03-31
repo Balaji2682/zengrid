@@ -1,5 +1,5 @@
 import type { ColumnDef } from '../../types/column';
-import type { SortDescriptor, SortDirection, SortRequest, SortState } from '../../types/sort';
+import type { SortDescriptor, SortDirection, SortState } from '../../types/sort';
 
 function isActiveSortDirection(
   direction: SortDirection
@@ -64,16 +64,4 @@ export function serializeSortState(
     direction: entry.direction as Exclude<SortDirection, null>,
     sortIndex: entry.sortIndex ?? index,
   }));
-}
-
-export function buildSortRequest(
-  sortState: SortState[],
-  columns?: ColumnDef[]
-): SortRequest {
-  const normalizedState = normalizeSortState(sortState);
-
-  return {
-    sortState: normalizedState,
-    sort: serializeSortState(normalizedState, columns),
-  };
 }

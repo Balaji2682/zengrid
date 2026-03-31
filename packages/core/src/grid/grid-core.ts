@@ -1,9 +1,4 @@
-import type {
-  CellRef,
-  GridOptions,
-  GridExportOptions,
-  DataRequestState,
-} from '../types';
+import type { CellRef, GridOptions, GridExportOptions, DataRequestState } from '../types';
 import type { GridPlugin } from '../reactive';
 import type { SlimGridContext } from './grid-context';
 import { createSlimContext, installAllPlugins } from './grid-setup';
@@ -17,13 +12,20 @@ import type { HeaderRenderer } from '../rendering/headers';
 import type { GridEvents } from '../events';
 import { ArrayAccessor } from '../data/data-accessor/array-accessor';
 import {
-  createSortApi, type SortApi,
-  createFilterApi, type FilterApi,
-  createPaginationApi, type PaginationApi,
-  createColumnApi, type ColumnApi,
-  createScrollApi, type ScrollApi,
-  createStateApi, type StateApi,
-  createExportApi, type ExportApi,
+  createSortApi,
+  type SortApi,
+  createFilterApi,
+  type FilterApi,
+  createPaginationApi,
+  type PaginationApi,
+  createColumnApi,
+  type ColumnApi,
+  createScrollApi,
+  type ScrollApi,
+  createStateApi,
+  type StateApi,
+  createExportApi,
+  type ExportApi,
 } from './api';
 
 export class Grid {
@@ -61,7 +63,7 @@ export class Grid {
   setData(data: any[][]): void {
     this.ctx.store.exec('core:setData', data);
     this.ctx.state.data = data;
-    this.ctx.options.rowCount = data.length;
+    this.ctx.optionsManager.update({ rowCount: data.length });
 
     const dataAccessor = new ArrayAccessor(data);
     (this.ctx as any)._setDataAccessor?.(dataAccessor);
@@ -139,7 +141,8 @@ export class Grid {
   destroy(): void {
     if (this.ctx.isDestroyed) return;
     this._theme.destroyAutoTheme();
-    this.ctx.pluginHost.destroy();
+    this.ctx.pluginHost?.destroy?.();
+    this.ctx.optionsManager?.destroy?.();
     this.ctx.container.innerHTML = '';
     this.ctx.container.classList.remove('zg-grid');
     this.ctx.state.data = [];
@@ -154,7 +157,8 @@ export class Grid {
   }
 
   updateOptions(options: Partial<GridOptions>): void {
-    Object.assign(this.ctx.options, options);
+    const change = this.ctx.optionsManager.update(options);
+    if (!change) return;
     this.ctx.store.exec('rendering:updateScroller');
     this.ctx.store.exec('rendering:refresh');
   }
@@ -201,7 +205,12 @@ export class Grid {
   getSlidingWindowStats() {
     if (this.ctx.pluginHost.has('infinite-scroll'))
       return this.ctx.store.get('infiniteScroll.stats');
-    return { virtualOffset: 0, rowsInMemory: this.ctx.state.data.length, totalRowsLoaded: 0, prunedRows: 0 };
+    return {
+      virtualOffset: 0,
+      rowsInMemory: this.ctx.state.data.length,
+      totalRowsLoaded: 0,
+      prunedRows: 0,
+    };
   }
 
   // --- Theme ---
@@ -279,7 +288,8 @@ export class Grid {
   getSortMode = () => this.sort.getMode();
 
   setFilter = (col: number, op: string, val: any) => this.filter.set(col, op, val);
-  setColumnFilter = (col: number, conditions: any[], logic?: 'AND' | 'OR') => this.filter.setColumn(col, conditions, logic);
+  setColumnFilter = (col: number, conditions: any[], logic?: 'AND' | 'OR') =>
+    this.filter.setColumn(col, conditions, logic);
   clearFilters = () => this.filter.clear();
   clearColumnFilter = (col: number) => this.filter.clearColumn(col);
   getFilterState = () => this.filter.getState();

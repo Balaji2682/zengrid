@@ -91,43 +91,13 @@ describe('Grid Auto Mode Resolution', () => {
     expect(grid.getData(1, 0)).toBe(2);
   });
 
-  it('uses backend sort mode when auto mode has onSortRequest', async () => {
-    const onSortRequest = jest.fn().mockResolvedValue(undefined);
-
-    grid = new Grid(container, {
-      rowCount: 2,
-      colCount: 2,
-      rowHeight: 30,
-      colWidth: 100,
-      columns: [
-        { field: 'name', header: 'Name' },
-        { field: 'score', header: 'Score' },
-      ],
-      sortMode: 'auto',
-      onSortRequest,
-    });
-
-    grid.setData([
-      ['Bob', 20],
-      ['Alice', 10],
-    ]);
-    grid.render();
-    await flushAsyncWork();
-
-    grid.sort.apply([{ column: 1, direction: 'asc' }]);
-    await flushAsyncWork();
-
-    expect(grid.sort.getMode()).toBe('backend');
-    expect(onSortRequest).toHaveBeenCalledTimes(1);
-  });
-
-  it('falls back to frontend sort mode when auto mode has no sort callback', async () => {
+  it('falls back to frontend sort mode when data mode resolves to frontend', async () => {
     grid = new Grid(container, {
       rowCount: 3,
       colCount: 2,
       rowHeight: 30,
       colWidth: 100,
-      sortMode: 'auto',
+      dataMode: 'auto',
     });
 
     grid.setData([
@@ -146,58 +116,18 @@ describe('Grid Auto Mode Resolution', () => {
     expect(store.get('rows.viewIndices')).toEqual([1, 2, 0]);
   });
 
-  it('uses backend filter mode when auto mode has onFilterRequest', async () => {
-    const onFilterRequest = jest.fn().mockResolvedValue(undefined);
-
-    grid = new Grid(container, {
-      rowCount: 2,
-      colCount: 2,
-      rowHeight: 30,
-      colWidth: 100,
-      columns: [
-        { field: 'name', header: 'Name' },
-        { field: 'score', header: 'Score' },
-      ],
-      filterMode: 'auto',
-      onFilterRequest,
-    });
-
-    grid.setData([
-      ['Bob', 20],
-      ['Alice', 10],
-    ]);
-    grid.render();
-    await flushAsyncWork();
-
-    grid.setColumnFilter(1, [{ operator: 'greaterThan', value: 15 }]);
-    await flushAsyncWork();
-
-    expect(grid.filter.getMode()).toBe('backend');
-    expect(onFilterRequest).toHaveBeenCalledTimes(1);
-  });
-
-  it('routes auto sort through onDataRequest when data mode also resolves backend', async () => {
+  it('keeps auto sort in frontend mode even when data loading resolves backend', async () => {
     const onDataRequest = jest
       .fn()
-      .mockResolvedValueOnce({
+      .mockResolvedValue({
         data: [
           ['Bob', 20],
           ['Alice', 10],
-        ],
-        totalRows: 2,
-        startRow: 0,
-        endRow: 2,
-      })
-      .mockResolvedValueOnce({
-        data: [
-          ['Alice', 10],
-          ['Bob', 20],
         ],
         totalRows: 2,
         startRow: 0,
         endRow: 2,
       });
-    const onSortRequest = jest.fn().mockResolvedValue(undefined);
 
     grid = new Grid(container, {
       rowCount: 2,
@@ -209,9 +139,7 @@ describe('Grid Auto Mode Resolution', () => {
         { field: 'score', header: 'Score' },
       ],
       dataMode: 'auto',
-      sortMode: 'auto',
       onDataRequest,
-      onSortRequest,
     });
 
     grid.render();
@@ -220,22 +148,18 @@ describe('Grid Auto Mode Resolution', () => {
     grid.sort.apply([{ column: 1, direction: 'asc' }]);
     await flushAsyncWork();
 
+    const store = grid.getStore();
+
     expect(grid.getDataMode()).toBe('backend');
-    expect(grid.sort.getMode()).toBe('backend');
-    expect(onSortRequest).not.toHaveBeenCalled();
-    expect(onDataRequest).toHaveBeenCalledTimes(2);
-    expect(onDataRequest.mock.calls[1][0]).toEqual(
-      expect.objectContaining({
-        sortState: [{ column: 1, direction: 'asc' }],
-        sort: [{ column: 1, field: 'score', direction: 'asc', sortIndex: 0 }],
-      })
-    );
+    expect(grid.sort.getMode()).toBe('frontend');
+    expect(onDataRequest).toHaveBeenCalledTimes(1);
+    expect(store.get('rows.viewIndices')).toEqual([1, 0]);
   });
 
-  it('routes auto filter through onDataRequest when data mode also resolves backend', async () => {
+  it('keeps auto filter in frontend mode even when data loading resolves backend', async () => {
     const onDataRequest = jest
       .fn()
-      .mockResolvedValueOnce({
+      .mockResolvedValue({
         data: [
           ['Bob', 20],
           ['Alice', 10],
@@ -243,14 +167,7 @@ describe('Grid Auto Mode Resolution', () => {
         totalRows: 2,
         startRow: 0,
         endRow: 2,
-      })
-      .mockResolvedValueOnce({
-        data: [['Bob', 20]],
-        totalRows: 1,
-        startRow: 0,
-        endRow: 1,
       });
-    const onFilterRequest = jest.fn().mockResolvedValue(undefined);
 
     grid = new Grid(container, {
       rowCount: 2,
@@ -262,9 +179,7 @@ describe('Grid Auto Mode Resolution', () => {
         { field: 'score', header: 'Score' },
       ],
       dataMode: 'auto',
-      filterMode: 'auto',
       onDataRequest,
-      onFilterRequest,
     });
 
     grid.render();
@@ -273,24 +188,12 @@ describe('Grid Auto Mode Resolution', () => {
     grid.filter.setColumn(1, [{ operator: 'greaterThan', value: 15 }]);
     await flushAsyncWork();
 
+    const store = grid.getStore();
+
     expect(grid.getDataMode()).toBe('backend');
-    expect(grid.filter.getMode()).toBe('backend');
-    expect(onFilterRequest).not.toHaveBeenCalled();
-    expect(onDataRequest).toHaveBeenCalledTimes(2);
-    expect(onDataRequest.mock.calls[1][0]).toEqual(
-      expect.objectContaining({
-        filterExpression: expect.objectContaining({
-          type: 'model',
-          models: [
-            {
-              column: 1,
-              conditions: [{ operator: 'greaterThan', value: 15 }],
-              logic: 'AND',
-            },
-          ],
-        }),
-      })
-    );
+    expect(grid.filter.getMode()).toBe('frontend');
+    expect(onDataRequest).toHaveBeenCalledTimes(1);
+    expect(store.get('rows.viewIndices')).toEqual([0]);
   });
 
   it('aborts superseded auto-mode data requests without surfacing an error', async () => {
@@ -322,15 +225,13 @@ describe('Grid Auto Mode Resolution', () => {
       rowHeight: 30,
       colWidth: 100,
       dataMode: 'auto',
-      sortMode: 'auto',
       onDataRequest,
-      onSortRequest: jest.fn(),
     });
 
     grid.render();
     await flushAsyncWork();
 
-    grid.sort.apply([{ column: 0, direction: 'asc' }]);
+    void grid.refreshData();
     await flushAsyncWork();
 
     expect(grid.getDataMode()).toBe('backend');

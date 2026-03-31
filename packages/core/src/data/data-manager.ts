@@ -1,4 +1,6 @@
-import type { DataLoadRequest, DataLoadResponse, FilterExpression, SortDescriptor, SortState, FilterModel } from '../types';
+import { buildQueryState, buildRangeQueryPaginationState } from '../features/query/query-state';
+import { getQueryStateSignature } from '../features/query/query-signature';
+import type { DataLoadRequest, DataLoadResponse, QueryState } from '../types';
 import { OperationModeManager, type OperationModeConfig } from '@zengrid/shared';
 import type { EventEmitter } from '../events/event-emitter';
 import type { GridEvents } from '../events/grid-events';
@@ -182,20 +184,7 @@ export class DataManager extends OperationModeManager<
   /**
    * Load data range (backend mode)
    */
-  async loadRange(
-    startRow: number,
-    endRow: number,
-    sortState?: SortState[],
-    filterState?: FilterModel[],
-    filterExports?: {
-      filter?: import('../features/filtering/types').FieldFilterState;
-      queryString?: string;
-      graphqlWhere?: Record<string, any>;
-      sql?: import('../features/filtering/adapters/types').SQLFilterExport;
-      expression?: FilterExpression;
-    },
-    sort?: SortDescriptor[]
-  ): Promise<void> {
+  async loadRange(startRow: number, endRow: number, query?: QueryState): Promise<void> {
     if (this.destroyed) return;
 
     // In frontend mode, data is already loaded
@@ -222,7 +211,10 @@ export class DataManager extends OperationModeManager<
 
     // Handle empty range
     if (startRow === endRow) {
-      this.events?.emit('warning', { message: 'loadRange() called with empty range', context: { startRow, endRow } });
+      this.events?.emit('warning', {
+        message: 'loadRange() called with empty range',
+        context: { startRow, endRow },
+      });
       return;
     }
 
@@ -240,11 +232,14 @@ export class DataManager extends OperationModeManager<
       endRow = Math.min(endRow, this.totalRows);
     }
 
+    const effectiveQuery =
+      query ??
+      buildQueryState({
+        pagination: buildRangeQueryPaginationState(startRow, endRow),
+      });
+
     // Generate cache key
-    const sortKeys = sortState?.map(s => `${s.column}:${s.direction}`).join(',') ?? '';
-    const filterVal = filterExports?.expression ?? filterState;
-    const filterKey = filterVal ? JSON.stringify(filterVal, Object.keys(filterVal).sort()) : '';
-    const cacheKey = `${startRow}-${endRow}-${sortKeys}-${filterKey}`;
+    const cacheKey = `${startRow}-${endRow}-${getQueryStateSignature(effectiveQuery)}`;
 
     // Check cache first
     if (this.cachedRanges.has(cacheKey)) {
@@ -260,15 +255,7 @@ export class DataManager extends OperationModeManager<
     }
 
     // Create loading promise
-    const loadPromise = this.executeLoadRange(
-      startRow,
-      endRow,
-      sortState,
-      filterState,
-      filterExports,
-      sort,
-      cacheKey
-    );
+    const loadPromise = this.executeLoadRange(startRow, endRow, effectiveQuery, cacheKey);
 
     // Track pending request
     this.pendingRequests.set(cacheKey, loadPromise);
@@ -287,18 +274,7 @@ export class DataManager extends OperationModeManager<
   private async executeLoadRange(
     startRow: number,
     endRow: number,
-    sortState: SortState[] | undefined,
-    filterState: FilterModel[] | undefined,
-    filterExports:
-      | {
-          filter?: import('../features/filtering/types').FieldFilterState;
-          queryString?: string;
-          graphqlWhere?: Record<string, any>;
-          sql?: import('../features/filtering/adapters/types').SQLFilterExport;
-          expression?: FilterExpression;
-        }
-      | undefined,
-    sort: SortDescriptor[] | undefined,
+    query: QueryState,
     cacheKey: string
   ): Promise<void> {
     const loadStartTime = Date.now();
@@ -320,52 +296,18 @@ export class DataManager extends OperationModeManager<
       });
     }
 
-    // Calculate pagination info
-    const pageSize = endRow - startRow;
-    const page = Math.floor(startRow / pageSize);
-
     const requestId = ++this.requestSequence;
     const controller = new AbortController();
     this.requestControllers.set(cacheKey, controller);
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let abortListener: EventListener | null = null;
 
-    // Prepare request with filter exports
-    const hasActiveFilterExports = Boolean(
-      filterExports &&
-        (filterExports.filter !== undefined ||
-          filterExports.queryString !== undefined ||
-          filterExports.graphqlWhere !== undefined ||
-          filterExports.sql !== undefined)
-    );
-
     const request: DataLoadRequest = {
       startRow,
       endRow,
       requestId,
       signal: controller.signal,
-      sortState,
-      sort,
-      filterExpression: filterExports?.expression,
-      filterState,
-      filter: filterExports?.filter,
-      filterExport: hasActiveFilterExports
-        ? {
-            queryString: filterExports?.queryString || '',
-            graphqlWhere: filterExports?.graphqlWhere || {},
-            sql: filterExports?.sql || {
-              whereClause: '',
-              positionalParams: [],
-              namedParams: {},
-              namedSql: '',
-            },
-          }
-        : undefined,
-      pagination: {
-        page,
-        pageSize,
-        offset: startRow,
-      },
+      query,
     };
 
     try {
@@ -402,7 +344,10 @@ export class DataManager extends OperationModeManager<
 
       // Handle empty response
       if (!response.data || response.data.length === 0) {
-        this.events?.emit('warning', { message: 'Backend returned empty data for range', context: { startRow, endRow } });
+        this.events?.emit('warning', {
+          message: 'Backend returned empty data for range',
+          context: { startRow, endRow },
+        });
         this.mergeRangeData(startRow, []);
       } else {
         // Merge loaded data
@@ -435,7 +380,7 @@ export class DataManager extends OperationModeManager<
         this.events.emit('error', {
           message: `Failed to load data range: ${errorMessage}`,
           error: error as Error,
-          context: { startRow, endRow, sortState, filterState },
+          context: { startRow, endRow, query },
         });
       }
 

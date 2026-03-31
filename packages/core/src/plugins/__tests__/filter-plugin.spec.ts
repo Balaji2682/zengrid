@@ -1,15 +1,15 @@
-import { PluginHost } from '../../grid/plugin-host';
+import type { FieldFilterState } from '../../features/filtering/types';
 import { GridApiImpl } from '../../grid/grid-api';
-import { GridStoreImpl } from '../../reactive/store';
-import { EventEmitter } from '../../utils';
-import { resetTracking } from '../../reactive/tracking';
+import { PluginHost } from '../../grid/plugin-host';
 import { resetDebug } from '../../reactive/debug';
 import { resetScheduler } from '../../reactive/effect-scheduler';
+import { GridStoreImpl } from '../../reactive/store';
+import { resetTracking } from '../../reactive/tracking';
+import type { FilterExpression } from '../../types';
+import { EventEmitter } from '../../utils';
 import { createCorePlugin } from '../core-plugin';
 import { createFilterPlugin } from '../filter-plugin';
 import { createSortPlugin } from '../sort-plugin';
-import type { FieldFilterState } from '../../features/filtering/types';
-import type { FilterExpression } from '../../types';
 
 let store: GridStoreImpl;
 let emitter: EventEmitter;
@@ -63,17 +63,16 @@ describe('FilterPlugin', () => {
     host.use(createFilterPlugin({ colCount: 1 }));
 
     expect(store.get('filter.state')).toEqual([]);
+    expect(store.get('filter.ast')).toBeNull();
     expect(store.get('pipeline.filter')).toBeUndefined();
   });
 
   it('filter:setColumn filters rows and produces correct indices', () => {
-    // Column 0 values: 10, 20, 30, 40, 50
     host.use(createCorePlugin({ initialData: [[10], [20], [30], [40], [50]] }));
     host.use(createFilterPlugin({ colCount: 1 }));
 
     store.exec('filter:setColumn', 0, [{ operator: 'greaterThan', value: 25 }]);
     const filtered = store.get('pipeline.filter') as number[];
-    // Rows with value > 25: idx 2 (30), idx 3 (40), idx 4 (50)
     expect(filtered).toEqual([2, 3, 4]);
   });
 
@@ -87,6 +86,7 @@ describe('FilterPlugin', () => {
     store.exec('filter:clear');
     expect(store.get('pipeline.filter')).toBeUndefined();
     expect(store.get('filter.state')).toEqual([]);
+    expect(store.get('filter.ast')).toBeNull();
   });
 
   it('filter:setQuickFilter filters rows and persists a shared expression', () => {
@@ -96,6 +96,9 @@ describe('FilterPlugin', () => {
     store.exec('filter:setQuickFilter', 'ali', [0]);
 
     expect(store.get('pipeline.filter')).toEqual([0, 2]);
+    expect(store.get('filter.ast')).toEqual(
+      (store.get('filter.expression') as FilterExpression | null)?.ast ?? null
+    );
     expect(store.get('filter.expression')).toEqual(
       expect.objectContaining({
         type: 'model',
@@ -147,18 +150,14 @@ describe('FilterPlugin', () => {
   });
 
   it('composed with sort: filter output preserves sort order', () => {
-    // Column 0 values: 50, 10, 40, 20, 30
     host.use(createCorePlugin({ initialData: [[50], [10], [40], [20], [30]] }));
     host.use(createSortPlugin());
     host.use(createFilterPlugin({ colCount: 1 }));
 
-    // Sort ascending: 10(1), 20(3), 30(4), 40(2), 50(0)
     store.exec('sort:toggle', 0);
     const sorted = store.get('pipeline.sort') as number[];
     expect(sorted).toEqual([1, 3, 4, 2, 0]);
 
-    // Filter: value > 25 → raw indices 0(50), 2(40), 4(30)
-    // In sorted order: 4(30), 2(40), 0(50)
     store.exec('filter:setColumn', 0, [{ operator: 'greaterThan', value: 25 }]);
     const filtered = store.get('pipeline.filter') as number[];
     expect(filtered).toEqual([4, 2, 0]);
@@ -226,6 +225,152 @@ describe('FilterPlugin', () => {
     expect(fieldExpression?.filterExport).toEqual(modelExports);
   });
 
+  it('keeps canonical AST in store and executes grouped field-state filters in the frontend', () => {
+    const fieldState: FieldFilterState = {
+      root: {
+        logic: 'OR',
+        conditions: [
+          { field: 'score', operator: 'gt', value: 20 },
+          { field: 'name', operator: 'eq', value: 'Alice' },
+        ],
+      },
+      activeFields: ['score', 'name'],
+      timestamp: Date.now(),
+    };
+
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    host.use(
+      createCorePlugin({
+        initialData: [
+          ['Alice', 10],
+          ['Bob', 20],
+          ['Alicia', 25],
+        ],
+      })
+    );
+    host.use(
+      createFilterPlugin({
+        colCount: 2,
+        columns: [
+          { field: 'name', header: 'Name' },
+          { field: 'score', header: 'Score' },
+        ],
+      })
+    );
+
+    store.exec('filter:setFieldState', fieldState);
+
+    const expression = normalizeFilterExpression(
+      store.get('filter.expression') as FilterExpression | null
+    );
+
+    expect(store.get('filter.state')).toEqual([]);
+    expect(store.get('pipeline.filter')).toEqual([0, 2]);
+    expect(store.get('filter.ast')).toEqual(expression?.ast ?? null);
+    expect(expression?.ast).toEqual(
+      expect.objectContaining({
+        version: 1,
+        root: expect.objectContaining({ logic: 'OR' }),
+      })
+    );
+    expect(expression?.fieldState).toEqual({
+      ...fieldState,
+      timestamp: 0,
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('filter.state is a compatibility projection for structured filters')
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it('executes nested grouped field-state filters through pipeline.filter', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    host.use(
+      createCorePlugin({
+        initialData: [
+          ['Alice', 10, 'active'],
+          ['Bob', 20, 'pending'],
+          ['Cara', 30, 'active'],
+        ],
+      })
+    );
+    host.use(
+      createFilterPlugin({
+        colCount: 3,
+        columns: [
+          { field: 'name', header: 'Name' },
+          { field: 'score', header: 'Score' },
+          { field: 'status', header: 'Status' },
+        ],
+      })
+    );
+
+    store.exec('filter:setFieldState', {
+      root: {
+        logic: 'OR',
+        conditions: [{ field: 'name', operator: 'eq', value: 'Bob' }],
+        groups: [
+          {
+            logic: 'AND',
+            conditions: [
+              { field: 'score', operator: 'gt', value: 15 },
+              { field: 'status', operator: 'eq', value: 'active' },
+            ],
+          },
+        ],
+      },
+      activeFields: ['name', 'score', 'status'],
+      timestamp: Date.now(),
+    });
+
+    expect(store.get('filter.state')).toEqual([]);
+    expect(store.get('pipeline.filter')).toEqual([1, 2]);
+
+    warnSpy.mockRestore();
+  });
+
+  it('throws and emits filter:error when a structured frontend filter is unexecutable', () => {
+    const errors: Error[] = [];
+    emitter.on('filter:error', ({ error }) => errors.push(error));
+
+    host.use(
+      createCorePlugin({
+        initialData: [
+          ['Alice', 10],
+          ['Bob', 20],
+        ],
+      })
+    );
+    host.use(
+      createFilterPlugin({
+        colCount: 2,
+        columns: [
+          { field: 'name', header: 'Name' },
+          { field: 'score', header: 'Score' },
+        ],
+      })
+    );
+
+    expect(() =>
+      store.exec('filter:setFieldState', {
+        root: {
+          logic: 'AND',
+          conditions: [{ field: 'missingField', operator: 'eq', value: 'Alice' }],
+        },
+        activeFields: ['missingField'],
+        timestamp: Date.now(),
+      })
+    ).toThrow('Structured filter cannot be executed in frontend mode.');
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0]?.message).toContain(
+      'AST predicate target is missing a column reference for frontend execution.'
+    );
+  });
+
   it('API methods are registered', () => {
     host.use(createCorePlugin({ initialData: [[1]] }));
     host.use(createFilterPlugin({ colCount: 1 }));
@@ -239,7 +384,7 @@ describe('FilterPlugin', () => {
 
   it('fires filter:change event with correct payload', () => {
     const events: unknown[] = [];
-    emitter.on('filter:change', (d: unknown) => events.push(d));
+    emitter.on('filter:change', (data: unknown) => events.push(data));
 
     host.use(createCorePlugin({ initialData: [[10], [20], [30]] }));
     host.use(createFilterPlugin({ colCount: 1 }));

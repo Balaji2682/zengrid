@@ -185,6 +185,8 @@ export class FilterOptimizer {
    * Returns null if optimization not applicable
    */
   private tryOptimizedFilter(_rowCount: number): number[] | null {
+    if (!this.core.canOptimizeWithColumnFilters()) return null;
+
     const columnFilters = this.core.getColumnFilters();
 
     // Only optimize for single column filters

@@ -146,6 +146,12 @@ describe('Grid Bridge: destroy', () => {
     grid.destroy();
     expect(spy).toHaveBeenCalled();
   });
+
+  it('tolerates partially initialized teardown state', () => {
+    (grid as any).ctx.optionsManager = undefined;
+
+    expect(() => grid.destroy()).not.toThrow();
+  });
 });
 
 describe('Grid Bridge: updateOptions', () => {
@@ -157,6 +163,32 @@ describe('Grid Bridge: updateOptions', () => {
     expect((grid as any).ctx.options).toBe(optionsRef);
     expect(optionsRef.rowHeight).toBe(42);
     expect(optionsRef.enableA11y).toBe(false);
+  });
+
+  it('exposes option subscriptions to plugins through the shared setup context', () => {
+    grid.usePlugin({
+      name: 'options-observer',
+      phase: 400,
+      dependencies: ['core'],
+      setup(store, _api, context) {
+        store.extend('optionsObserver.rowHeight', context.options.rowHeight, 'options-observer');
+        store.extend('optionsObserver.changedKeys', [] as string[], 'options-observer');
+
+        return {
+          teardown: [
+            context.subscribeOptions((change) => {
+              store.set('optionsObserver.rowHeight', context.options.rowHeight);
+              store.set('optionsObserver.changedKeys', [...change.changedKeys]);
+            }),
+          ],
+        };
+      },
+    });
+
+    grid.updateOptions({ rowHeight: 42 });
+
+    expect(grid.getStore().get('optionsObserver.rowHeight')).toBe(42);
+    expect(grid.getStore().get('optionsObserver.changedKeys')).toEqual(['rowHeight']);
   });
 });
 

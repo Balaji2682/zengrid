@@ -1,4 +1,5 @@
 import type { GridPlugin, PluginDisposable } from '../reactive/types';
+import { buildUnexecutableFilterError } from '../features/filtering/filter-execution-error';
 import { FilterManager } from '../features/filtering/filter-manager';
 import { buildModelFilterExpression } from '../features/filtering/filter-expression';
 import type {
@@ -10,15 +11,13 @@ import type {
 } from '../types';
 import type { FieldFilterState } from '../features/filtering/types';
 import type { DataAccessor } from '../data/data-accessor/data-accessor.interface';
+import { resolveQueryExecutionMode } from '../grid/query-mode';
 
 export interface FilterPluginOptions {
   colCount?: number;
-  filterMode?: 'frontend' | 'backend';
   columns?: ColumnDef[];
   enableExport?: boolean;
   usePipeline?: boolean;
-  onFilterRequest?: (filterExpression: FilterExpression) => Promise<void> | void;
-  useRequestCallback?: boolean;
 }
 
 export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
@@ -26,22 +25,28 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
     name: 'filter',
     phase: 20,
     dependencies: ['core'],
-    setup(store, api): PluginDisposable {
+    setup(store, api, context): PluginDisposable {
       store.extend('filter.state', [], 'filter');
+      store.extend('filter.ast', null, 'filter');
       store.extend('filter.quickFilter', { query: '', columns: null as number[] | null }, 'filter');
       store.extend('filter.expression', null as FilterExpression | null, 'filter');
       store.extend('pipeline.filter', undefined, 'filter', 20);
 
       const usePipeline = options?.usePipeline !== false;
-      const useRequestCallback = options?.useRequestCallback !== false;
+      const getColumns = () => context.options.columns ?? options?.columns;
+      const getColCount = () => context.options.colCount ?? options?.colCount ?? 0;
 
-      let mgr = createManager(options?.colCount ?? 0);
+      let mgr = createManager(getColCount());
 
       // Quick filter state
       let quickFilterQuery = '';
       let quickFilterColumns: number[] | null = null;
       let quickFilterCache: string[] | null = null;
       let quickFilterCacheKey: string | null = null;
+
+      function getQueryMode(): 'frontend' | 'backend' {
+        return resolveQueryExecutionMode(context.options.dataMode);
+      }
 
       function createManager(colCount: number, dataAccessor?: DataAccessor | null): FilterManager {
         const getValue = dataAccessor
@@ -54,10 +59,8 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
         return new FilterManager({
           colCount,
           getValue,
-          mode: options?.filterMode ?? 'frontend',
-          columns: options?.columns,
+          columns: getColumns(),
           enableExport: options?.enableExport ?? true,
-          onFilterRequest: options?.onFilterRequest,
         });
       }
 
@@ -74,43 +77,41 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
       }
 
       function buildExpression(): FilterExpression {
-        const hasColumns = Array.isArray(options?.columns) && options.columns.length > 0;
+        const columns = getColumns();
+        const hasColumns = Array.isArray(columns) && columns.length > 0;
 
         return buildModelFilterExpression({
           models: mgr.getFilterState(),
           quickFilter: getQuickFilterState(),
           fieldState: hasColumns ? mgr.getFieldFilterState() : null,
           filterExport: hasColumns ? mgr.getFilterExport() : null,
+          ast: mgr.getFilterAst(),
+          columns,
         });
       }
 
       function persistState(): FilterExpression {
         const expression = buildExpression();
         store.set('filter.state', mgr.getFilterState());
+        store.set('filter.ast', expression.ast ?? null);
         store.set('filter.expression', expression);
         return expression;
       }
 
-      function dispatchBackendFilterRequest(expression: FilterExpression): void {
-        if (options?.filterMode !== 'backend' || !useRequestCallback || !options.onFilterRequest) {
+      function warnOnStructuredProjection(): void {
+        const projectionWarnings = mgr.getAstProjectionWarnings();
+
+        if (!mgr.isUsingAstExecution() || projectionWarnings.length === 0) {
           return;
         }
 
-        try {
-          const result = options.onFilterRequest(expression);
-          if (result && typeof result === 'object' && 'then' in result) {
-            result.catch((error) => {
-              api.fireEvent('filter:error', {
-                timestamp: Date.now(),
-                error: error instanceof Error ? error : new Error('Backend filter failed'),
-              });
-            });
-          }
-        } catch (error) {
-          api.fireEvent('filter:error', {
-            timestamp: Date.now(),
-            error: error instanceof Error ? error : new Error('Backend filter failed'),
-          });
+        console.warn(
+          'FilterPlugin: filter.state is a compatibility projection for structured filters. ' +
+            'Use filter.ast for the canonical frontend/backend contract.'
+        );
+
+        for (const warning of projectionWarnings) {
+          console.warn(`FilterPlugin: ${warning}`);
         }
       }
 
@@ -118,12 +119,24 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
         if (quickFilterColumns && quickFilterColumns.length > 0) {
           return quickFilterColumns;
         }
-        const colCount = options?.colCount ?? 0;
-        if (options?.columns && options.columns.length > 0) {
-          return options.columns.map((_c, index) => index);
+        const columns = getColumns();
+        const colCount = getColCount();
+        if (columns && columns.length > 0) {
+          return columns.map((_c, index) => index);
         }
         return Array.from({ length: colCount }, (_, i) => i);
       }
+
+      const unsubscribeOptions = context.subscribeOptions((change) => {
+        if (!change.changedKeys.includes('columns') && !change.changedKeys.includes('colCount')) {
+          return;
+        }
+
+        mgr.setColumns(getColumns() ?? []);
+        mgr.setColCount(getColCount());
+        clearQuickFilterCache();
+        applyFilter();
+      });
 
       function ensureQuickFilterCache(columns: number[]): void {
         const cacheKey = columns.join(',');
@@ -177,7 +190,7 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
       }
 
       function applyFilter(): FilterExpression {
-        const hasColumnFilters = mgr.hasActiveFilters();
+        const hasStructuredFilters = mgr.hasStructuredFilters();
         const hasQuickFilter = quickFilterQuery.trim().length > 0;
         const expression = persistState();
 
@@ -186,9 +199,19 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
           return expression;
         }
 
-        if (!hasColumnFilters && !hasQuickFilter) {
+        if (!hasStructuredFilters && !hasQuickFilter) {
           store.set('pipeline.filter', undefined);
+          warnOnStructuredProjection();
           return expression;
+        }
+
+        if (mgr.hasUnexecutableFilters()) {
+          const error = buildUnexecutableFilterError(mgr.getAstExecutionWarnings());
+          api.fireEvent('filter:error', {
+            timestamp: Date.now(),
+            error,
+          });
+          throw error;
         }
 
         const rowCount = store.get('rows.count') as number;
@@ -198,7 +221,7 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
 
         let result = input;
 
-        if (hasColumnFilters) {
+        if (hasStructuredFilters) {
           const visibleSet = new Set(mgr.getVisibleRows(rowCount));
           result = result.filter((idx) => visibleSet.has(idx));
         }
@@ -208,6 +231,7 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
         }
 
         store.set('pipeline.filter', result);
+        warnOnStructuredProjection();
         return expression;
       }
 
@@ -216,9 +240,11 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
         (col: number, conditions: FilterCondition[], logic: 'AND' | 'OR' = 'AND') => {
           const prev = mgr.getFilterState();
           mgr.setColumnFilter(col, conditions, logic);
-          const expression = applyFilter();
-          api.fireEvent('filter:change', { filterState: mgr.getFilterState(), previousFilterState: prev });
-          dispatchBackendFilterRequest(expression);
+          applyFilter();
+          api.fireEvent('filter:change', {
+            filterState: mgr.getFilterState(),
+            previousFilterState: prev,
+          });
         },
         'filter'
       );
@@ -232,9 +258,8 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
           quickFilterColumns = null;
           clearQuickFilterCache();
           store.set('filter.quickFilter', { query: '', columns: null });
-          const expression = applyFilter();
+          applyFilter();
           api.fireEvent('filter:change', { filterState: [], previousFilterState: prev });
-          dispatchBackendFilterRequest(expression);
         },
         'filter'
       );
@@ -244,9 +269,11 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
         (col: number) => {
           const prev = mgr.getFilterState();
           mgr.clearColumnFilter(col);
-          const expression = applyFilter();
-          api.fireEvent('filter:change', { filterState: mgr.getFilterState(), previousFilterState: prev });
-          dispatchBackendFilterRequest(expression);
+          applyFilter();
+          api.fireEvent('filter:change', {
+            filterState: mgr.getFilterState(),
+            previousFilterState: prev,
+          });
         },
         'filter'
       );
@@ -254,8 +281,7 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
       store.action(
         'filter:reapply',
         () => {
-          const expression = applyFilter();
-          dispatchBackendFilterRequest(expression);
+          applyFilter();
         },
         'filter'
       );
@@ -278,9 +304,11 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
           quickFilterQuery = query ?? '';
           quickFilterColumns = columns ?? null;
           store.set('filter.quickFilter', { query: quickFilterQuery, columns: quickFilterColumns });
-          const expression = applyFilter();
-          api.fireEvent('filter:change', { filterState: mgr.getFilterState(), previousFilterState: prev });
-          dispatchBackendFilterRequest(expression);
+          applyFilter();
+          api.fireEvent('filter:change', {
+            filterState: mgr.getFilterState(),
+            previousFilterState: prev,
+          });
         },
         'filter'
       );
@@ -293,9 +321,11 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
           quickFilterColumns = null;
           clearQuickFilterCache();
           store.set('filter.quickFilter', { query: '', columns: null });
-          const expression = applyFilter();
-          api.fireEvent('filter:change', { filterState: mgr.getFilterState(), previousFilterState: prev });
-          dispatchBackendFilterRequest(expression);
+          applyFilter();
+          api.fireEvent('filter:change', {
+            filterState: mgr.getFilterState(),
+            previousFilterState: prev,
+          });
         },
         'filter'
       );
@@ -312,9 +342,11 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
               model.logic ?? 'AND'
             );
           }
-          const expression = applyFilter();
-          api.fireEvent('filter:change', { filterState: mgr.getFilterState(), previousFilterState: prev });
-          dispatchBackendFilterRequest(expression);
+          applyFilter();
+          api.fireEvent('filter:change', {
+            filterState: mgr.getFilterState(),
+            previousFilterState: prev,
+          });
         },
         'filter'
       );
@@ -324,9 +356,11 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
         (state: FieldFilterState) => {
           const prev = mgr.getFilterState();
           mgr.setFieldFilter(state);
-          const expression = applyFilter();
-          api.fireEvent('filter:change', { filterState: mgr.getFilterState(), previousFilterState: prev });
-          dispatchBackendFilterRequest(expression);
+          applyFilter();
+          api.fireEvent('filter:change', {
+            filterState: mgr.getFilterState(),
+            previousFilterState: prev,
+          });
         },
         'filter'
       );
@@ -346,10 +380,10 @@ export function createFilterPlugin(options?: FilterPluginOptions): GridPlugin {
         getFilterExports: () => mgr.getFilterExport(),
         getQuickFilter: () => store.get('filter.quickFilter'),
         getExpression: () => store.get('filter.expression'),
-        getMode: () => options?.filterMode ?? 'frontend',
+        getMode: () => getQueryMode(),
       });
 
-      return { teardown: [() => mgr.destroy()] };
+      return { teardown: [unsubscribeOptions, () => mgr.destroy()] };
     },
   };
 }

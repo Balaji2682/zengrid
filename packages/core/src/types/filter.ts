@@ -3,7 +3,7 @@
  */
 
 import type { FilterExportResult } from '../features/filtering/adapters/types';
-import type { FieldFilterState } from '../features/filtering/types';
+import type { FieldFilterState, StandardFilterOperator } from '../features/filtering/types';
 
 /**
  * Filter operator types
@@ -61,9 +61,112 @@ export interface FilterQuery {
 }
 
 /**
+ * Canonical value classification for AST predicates.
+ */
+export type FilterValueType =
+  | 'text'
+  | 'number'
+  | 'date'
+  | 'boolean'
+  | 'enum'
+  | 'custom'
+  | 'unknown';
+
+/**
+ * Shared target reference for AST predicates and search nodes.
+ *
+ * The long-term canonical key is `field`, but `column` remains available
+ * for compatibility with existing index-based APIs.
+ */
+export type FilterAstTarget =
+  | {
+      field: string;
+      column?: number;
+      columnId?: string;
+    }
+  | {
+      field?: string;
+      column: number;
+      columnId?: string;
+    }
+  | {
+      field?: string;
+      column?: number;
+      columnId: string;
+    };
+
+/**
+ * Base metadata shared across AST nodes.
+ */
+export interface FilterAstBaseNode {
+  source?: 'model' | 'field' | 'quickFilter' | 'sql' | 'api';
+}
+
+/**
+ * Group node for boolean composition.
+ */
+export interface FilterAstGroupNode extends FilterAstBaseNode {
+  kind: 'group';
+  logic: 'AND' | 'OR';
+  children: FilterAstNode[];
+}
+
+/**
+ * Predicate node for field/column constraints.
+ */
+export interface FilterAstPredicateNode extends FilterAstBaseNode {
+  kind: 'predicate';
+  target: FilterAstTarget;
+  operator: StandardFilterOperator | string;
+  value?: any;
+  valueTo?: any;
+  valueType?: FilterValueType;
+  sourceOperator?: FilterOperator | string;
+}
+
+/**
+ * Search node for global or scoped quick-filter semantics.
+ */
+export interface FilterAstSearchNode extends FilterAstBaseNode {
+  kind: 'search';
+  query: string;
+  targets?: FilterAstTarget[] | null;
+}
+
+/**
+ * NOT node for future advanced filtering support.
+ */
+export interface FilterAstNotNode extends FilterAstBaseNode {
+  kind: 'not';
+  child: FilterAstNode;
+}
+
+/**
+ * Filter AST node union.
+ */
+export type FilterAstNode =
+  | FilterAstGroupNode
+  | FilterAstPredicateNode
+  | FilterAstSearchNode
+  | FilterAstNotNode;
+
+/**
+ * Canonical filter AST envelope.
+ */
+export interface FilterAst {
+  version: 1;
+  root: FilterAstGroupNode | null;
+}
+
+/**
  * Parsed filter expression shared by backend callbacks and backend data requests.
  */
 export interface FilterExpression {
+  /**
+   * Canonical typed filter AST.
+   */
+  ast?: FilterAst | null;
+
   /**
    * Type of filter input.
    */
@@ -97,10 +200,10 @@ export interface FilterExpression {
   /**
    * Field-based filter state for backend-friendly consumption.
    */
-  fieldState?: FieldFilterState;
+  fieldState?: FieldFilterState | null;
 
   /**
    * Pre-computed backend exports (REST / GraphQL / SQL).
    */
-  filterExport?: FilterExportResult;
+  filterExport?: FilterExportResult | null;
 }

@@ -1,5 +1,4 @@
 import type { FilterModel, ColumnDef } from '../../../types';
-import type { OperationMode } from '@zengrid/shared';
 import type { EventEmitter } from '../../../events/event-emitter';
 import type { GridEvents } from '../../../events/grid-events';
 import type { FilterExportManagerOptions } from '../filter-export-manager';
@@ -29,21 +28,9 @@ export interface FilterManagerOptions {
   initialFilters?: FilterModel[];
 
   /**
-   * Filter mode: frontend, backend, or auto
-   * @default 'frontend'
-   */
-  mode?: OperationMode;
-
-  /**
    * Column names for SQL query field mapping
    */
   columnNames?: string[];
-
-  /**
-   * Backend filtering callback
-   * Called when mode is 'backend' or 'auto' (with callback present)
-   */
-  onFilterRequest?: (filter: any) => Promise<void> | void;
 
   /**
    * Column definitions (for field-based filtering)

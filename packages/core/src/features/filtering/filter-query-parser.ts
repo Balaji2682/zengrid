@@ -1,40 +1,56 @@
-import type { FilterQuery, FilterExpression, FilterModel } from '../../types';
+import type {
+  FilterAst,
+  FilterAstNode,
+  FilterAstPredicateNode,
+  FilterAstTarget,
+  FilterExpression,
+  FilterModel,
+  FilterOperator,
+  FilterQuery,
+} from '../../types';
+import { projectFilterAstToModels, toStandardFilterOperator } from './filter-ast';
 
 type NamedQueryParams = Record<string, unknown>;
-type PositionalSqlParams = Array<string | number>;
+type PositionalSqlParams = unknown[];
+
+type SqlTokenType =
+  | 'identifier'
+  | 'string'
+  | 'number'
+  | 'param'
+  | 'keyword'
+  | 'operator'
+  | 'lparen'
+  | 'rparen'
+  | 'comma'
+  | 'eof';
+
+interface SqlToken {
+  type: SqlTokenType;
+  value: string | number;
+  start: number;
+  end: number;
+}
+
+const KEYWORDS = new Set([
+  'AND',
+  'OR',
+  'NOT',
+  'LIKE',
+  'BETWEEN',
+  'IN',
+  'IS',
+  'NULL',
+  'TRUE',
+  'FALSE',
+]);
 
 /**
  * FilterQueryParser - Parses SQL-like filter queries
  *
- * Converts SQL-like syntax to FilterExpression for both backend and frontend use
- *
- * Supported operators:
- * - Comparison: =, !=, <, >, <=, >=
- * - String: LIKE, NOT LIKE
- * - Range: BETWEEN, NOT BETWEEN
- * - List: IN, NOT IN
- * - Null: IS NULL, IS NOT NULL
- * - Logic: AND, OR, NOT, ( )
- *
- * @example
- * ```typescript
- * const parser = new FilterQueryParser();
- *
- * // Simple query
- * parser.parse({ sql: "age > 18" });
- *
- * // Parameterized query (recommended)
- * parser.parse({
- *   sql: "age > :minAge AND status = :status",
- *   params: { minAge: 18, status: 'active' }
- * });
- *
- * // Complex query
- * parser.parse({
- *   sql: "age BETWEEN :min AND :max AND (name LIKE :search OR email LIKE :search)",
- *   params: { min: 18, max: 65, search: '%john%' }
- * });
- * ```
+ * Converts SQL-like syntax to FilterExpression for both backend and frontend use.
+ * Supported syntax is lowered into semantic AST nodes so frontend and backend
+ * now share the same canonical filter tree.
  */
 export class FilterQueryParser {
   private columnMap: Map<string, number> = new Map();
@@ -53,10 +69,11 @@ export class FilterQueryParser {
   parse(query: FilterQuery): FilterExpression {
     try {
       const { sql: boundSql, params } = this.toPositionalQuery(query.sql, query.params ?? {});
+      const ast = this.parseSemanticAst(query.sql, query.params ?? {});
 
-      // Step 3: Return expression
       return {
         type: 'sql',
+        ast,
         sql: query.sql,
         boundSql,
         params,
@@ -66,13 +83,53 @@ export class FilterQueryParser {
     }
   }
 
-  private toPositionalQuery(sql: string, namedParams: NamedQueryParams): {
+  /**
+   * Convert SQL query to FilterModels (for frontend filtering)
+   */
+  parseToModels(query: FilterQuery, columnNames: string[]): FilterModel[] {
+    const expression = this.parse(query);
+    const projection = projectFilterAstToModels(expression.ast, {
+      columns: columnNames.map((name) => ({ field: name, header: name })),
+    });
+
+    if (projection.complete) {
+      return projection.models;
+    }
+
+    console.warn(
+      'FilterQueryParser.parseToModels(): Converting SQL to FilterModels has limitations. Consider using the canonical filter AST for complex queries.'
+    );
+
+    for (const warning of projection.warnings) {
+      console.warn(`FilterQueryParser.parseToModels(): ${warning}`);
+    }
+
+    return [];
+  }
+
+  private parseSemanticAst(sql: string, params: NamedQueryParams): FilterAst {
+    const parser = new SqlAstParser(sql, params, (field) => this.resolveTarget(field));
+    return parser.parse();
+  }
+
+  private resolveTarget(field: string): FilterAstTarget {
+    const column = this.columnMap.get(field);
+    return {
+      field,
+      column,
+    };
+  }
+
+  private toPositionalQuery(
+    sql: string,
+    namedParams: NamedQueryParams
+  ): {
     sql: string;
     params: PositionalSqlParams;
   } {
     const params: PositionalSqlParams = [];
 
-    const tokenRegex = /'([^']*)'|\b(\d+(?:\.\d+)?)\b|:([A-Za-z_][A-Za-z0-9_]*)\b/g;
+    const tokenRegex = /'((?:''|[^'])*)'|(-?\d+(?:\.\d+)?)\b|:([A-Za-z_][A-Za-z0-9_]*)\b/g;
     const boundSql = sql.replace(
       tokenRegex,
       (match, stringValue?: string, numberValue?: string, namedParam?: string) => {
@@ -86,7 +143,7 @@ export class FilterQueryParser {
         }
 
         if (stringValue !== undefined) {
-          params.push(stringValue);
+          params.push(stringValue.replace(/''/g, "'"));
           return '?';
         }
 
@@ -102,169 +159,582 @@ export class FilterQueryParser {
     return { sql: boundSql, params };
   }
 
-  private toSqlParamValue(value: unknown): string | number {
-    if (typeof value === 'number') {
+  private toSqlParamValue(value: unknown): unknown {
+    if (
+      typeof value === 'number' ||
+      typeof value === 'string' ||
+      typeof value === 'boolean' ||
+      value == null
+    ) {
       return value;
     }
 
     return String(value);
   }
+}
 
-  /**
-   * Convert SQL query to FilterModels (for frontend filtering)
-   * This is a simplified conversion - complex queries may not convert perfectly
-   */
-  parseToModels(query: FilterQuery, columnNames: string[]): FilterModel[] {
-    const inferredColumnMap =
-      this.columnMap.size > 0
-        ? this.columnMap
-        : new Map(columnNames.map((name, index) => [name, index] as const));
-    const parsedModels = this.parseSimpleModels(query, inferredColumnMap);
+class SqlAstParser {
+  private readonly sql: string;
+  private readonly params: NamedQueryParams;
+  private readonly resolveTarget: (field: string) => FilterAstTarget;
+  private readonly tokens: SqlToken[];
+  private index = 0;
 
-    if (parsedModels) {
-      return parsedModels;
-    }
-
-    console.warn(
-      'FilterQueryParser.parseToModels(): Converting SQL to FilterModels has limitations. Consider using backend filtering for complex queries.'
-    );
-
-    return [];
-  }
-
-  private parseSimpleModels(query: FilterQuery, columnMap: Map<string, number>): FilterModel[] | null {
-    if (/[()]/.test(query.sql) || /\b(OR|BETWEEN|NOT BETWEEN|IN|NOT IN|IS NULL|IS NOT NULL)\b/i.test(query.sql)) {
-      return null;
-    }
-
-    const clauses = query.sql.split(/\s+AND\s+/i).map((clause) => clause.trim()).filter(Boolean);
-    const modelsByColumn = new Map<number, FilterModel>();
-
-    for (const clause of clauses) {
-      const parsedClause = this.parseSimpleClause(clause, query.params ?? {}, columnMap);
-      if (!parsedClause) {
-        return null;
-      }
-
-      const existingModel = modelsByColumn.get(parsedClause.column);
-      if (existingModel) {
-        existingModel.conditions.push(parsedClause.condition);
-        existingModel.logic = 'AND';
-        continue;
-      }
-
-      modelsByColumn.set(parsedClause.column, {
-        column: parsedClause.column,
-        conditions: [parsedClause.condition],
-      });
-    }
-
-    return Array.from(modelsByColumn.values());
-  }
-
-  private parseSimpleClause(
-    clause: string,
+  constructor(
+    sql: string,
     params: NamedQueryParams,
-    columnMap: Map<string, number>
-  ): { column: number; condition: FilterModel['conditions'][number] } | null {
-    const match = clause.match(
-      /^([A-Za-z_][A-Za-z0-9_.]*)\s*(=|!=|<>|>=|<=|>|<|LIKE|NOT LIKE)\s*(.+)$/i
-    );
-    if (!match) {
-      return null;
-    }
+    resolveTarget: (field: string) => FilterAstTarget
+  ) {
+    this.sql = sql;
+    this.params = params;
+    this.resolveTarget = resolveTarget;
+    this.tokens = tokenizeSql(sql);
+  }
 
-    const [, fieldName, sqlOperator, rawValue] = match;
-    const column = columnMap.get(fieldName);
-    if (column === undefined) {
-      return null;
-    }
-
-    const value = this.resolveClauseValue(rawValue.trim(), params);
-    const operator = this.sqlOperatorToFilterOperator(sqlOperator.toUpperCase(), value);
+  parse(): FilterAst {
+    const node = this.parseOrExpression();
+    this.expect('eof');
 
     return {
-      column,
-      condition: {
-        operator,
-        value: this.normalizeClauseValue(operator, value),
-      },
+      version: 1,
+      root: node.kind === 'group' ? node : this.createGroup('AND', [node]),
     };
   }
 
-  private resolveClauseValue(rawValue: string, params: NamedQueryParams): string | number {
-    if (rawValue.startsWith(':')) {
-      const paramName = rawValue.slice(1);
-      if (!Object.prototype.hasOwnProperty.call(params, paramName)) {
-        throw new Error(`Missing named parameter :${paramName}`);
-      }
+  private parseOrExpression(): FilterAstNode {
+    const nodes = [this.parseAndExpression()];
 
-      return this.toSqlParamValue(params[paramName]);
+    while (this.matchKeyword('OR')) {
+      nodes.push(this.parseAndExpression());
     }
 
-    if (rawValue.startsWith("'") && rawValue.endsWith("'")) {
-      return rawValue.slice(1, -1);
-    }
-
-    const numericValue = Number(rawValue);
-    if (!Number.isNaN(numericValue)) {
-      return numericValue;
-    }
-
-    return rawValue;
+    return this.combineNodes('OR', nodes);
   }
 
-  private normalizeClauseValue(operator: FilterModel['conditions'][number]['operator'], value: string | number) {
-    if (typeof value !== 'string') {
-      return value;
+  private parseAndExpression(): FilterAstNode {
+    const nodes = [this.parseNotExpression()];
+
+    while (this.matchKeyword('AND')) {
+      nodes.push(this.parseNotExpression());
     }
 
-    if (operator === 'contains' || operator === 'notContains') {
-      return value.replace(/^%|%$/g, '');
-    }
-
-    if (operator === 'startsWith') {
-      return value.replace(/%$/g, '');
-    }
-
-    if (operator === 'endsWith') {
-      return value.replace(/^%/g, '');
-    }
-
-    return value;
+    return this.combineNodes('AND', nodes);
   }
 
-  private sqlOperatorToFilterOperator(sqlOperator: string, value: string | number): FilterModel['conditions'][number]['operator'] {
-    if (sqlOperator === 'LIKE' && typeof value === 'string') {
-      if (value.startsWith('%') && value.endsWith('%')) {
-        return 'contains';
-      }
-
-      if (value.endsWith('%')) {
-        return 'startsWith';
-      }
-
-      if (value.startsWith('%')) {
-        return 'endsWith';
-      }
-
-      return 'contains';
+  private parseNotExpression(): FilterAstNode {
+    if (this.matchKeyword('NOT')) {
+      return {
+        kind: 'not',
+        source: 'sql',
+        child: this.parseNotExpression(),
+      };
     }
 
-    if (sqlOperator === 'NOT LIKE') {
-      return 'notContains';
-    }
-
-    const mapping = new Map<string, FilterModel['conditions'][number]['operator']>([
-      ['=', 'equals'],
-      ['!=', 'notEquals'],
-      ['<>', 'notEquals'],
-      ['>', 'greaterThan'],
-      ['<', 'lessThan'],
-      ['>=', 'greaterThanOrEqual'],
-      ['<=', 'lessThanOrEqual'],
-    ]);
-
-    return mapping.get(sqlOperator) ?? 'equals';
+    return this.parsePrimaryExpression();
   }
+
+  private parsePrimaryExpression(): FilterAstNode {
+    if (this.match('lparen')) {
+      const node = this.parseOrExpression();
+      this.expect('rparen');
+      return node;
+    }
+
+    return this.parsePredicate();
+  }
+
+  private parsePredicate(): FilterAstNode {
+    const field = this.expectIdentifier();
+
+    if (this.matchKeyword('IS')) {
+      if (this.matchKeyword('NOT')) {
+        this.expectKeyword('NULL');
+        return this.createPredicate(field, 'notBlank');
+      }
+
+      this.expectKeyword('NULL');
+      return this.createPredicate(field, 'blank');
+    }
+
+    if (this.matchKeyword('NOT')) {
+      if (this.matchKeyword('LIKE')) {
+        return this.buildLikeNode(field, this.parseValue(), true);
+      }
+
+      if (this.matchKeyword('BETWEEN')) {
+        const value = this.parseValue();
+        this.expectKeyword('AND');
+        const valueTo = this.parseValue();
+        return this.createNotNode(this.createPredicate(field, 'between', value, valueTo));
+      }
+
+      if (this.matchKeyword('IN')) {
+        return this.createPredicate(field, 'notIn', this.parseValueList());
+      }
+
+      throw this.error('Expected LIKE, BETWEEN, or IN after NOT in predicate.');
+    }
+
+    if (this.matchKeyword('BETWEEN')) {
+      const value = this.parseValue();
+      this.expectKeyword('AND');
+      const valueTo = this.parseValue();
+      return this.createPredicate(field, 'between', value, valueTo);
+    }
+
+    if (this.matchKeyword('IN')) {
+      return this.createPredicate(field, 'in', this.parseValueList());
+    }
+
+    if (this.matchKeyword('LIKE')) {
+      return this.buildLikeNode(field, this.parseValue(), false);
+    }
+
+    const operator = this.matchComparisonOperator();
+    if (!operator) {
+      throw this.error('Expected a comparison operator, LIKE, BETWEEN, IN, or IS NULL.');
+    }
+
+    return this.createComparisonNode(field, operator, this.parseValue());
+  }
+
+  private createComparisonNode(field: string, operator: string, value: unknown): FilterAstNode {
+    switch (operator) {
+      case '=':
+        return this.createPredicate(field, 'equals', value);
+      case '!=':
+      case '<>':
+        return this.createPredicate(field, 'notEquals', value);
+      case '>':
+        return this.createPredicate(field, 'greaterThan', value);
+      case '<':
+        return this.createPredicate(field, 'lessThan', value);
+      case '>=':
+        return this.createPredicate(field, 'greaterThanOrEqual', value);
+      case '<=':
+        return this.createPredicate(field, 'lessThanOrEqual', value);
+      default:
+        throw this.error(`Unsupported comparison operator ${operator}.`);
+    }
+  }
+
+  private buildLikeNode(field: string, rawValue: unknown, negated: boolean): FilterAstNode {
+    const pattern = String(rawValue);
+    const wildcardCount = countLikeWildcards(pattern);
+    const simpleInner = pattern.replace(/^%/, '').replace(/%$/, '');
+    const hasUnderscore = pattern.includes('_');
+
+    if (wildcardCount === 0 && !hasUnderscore) {
+      return this.createPredicate(field, negated ? 'notEquals' : 'equals', pattern);
+    }
+
+    if (!hasUnderscore && wildcardCount === 2 && pattern.startsWith('%') && pattern.endsWith('%')) {
+      return this.createPredicate(field, negated ? 'notContains' : 'contains', simpleInner);
+    }
+
+    if (!hasUnderscore && wildcardCount === 1 && pattern.endsWith('%')) {
+      const predicate = this.createPredicate(field, 'startsWith', pattern.slice(0, -1));
+      return negated ? this.createNotNode(predicate) : predicate;
+    }
+
+    if (!hasUnderscore && wildcardCount === 1 && pattern.startsWith('%')) {
+      const predicate = this.createPredicate(field, 'endsWith', pattern.slice(1));
+      return negated ? this.createNotNode(predicate) : predicate;
+    }
+
+    const predicate = this.createPredicate(field, 'regex', likePatternToRegex(pattern));
+    return negated ? this.createNotNode(predicate) : predicate;
+  }
+
+  private createPredicate(
+    field: string,
+    operator: FilterOperator,
+    value?: unknown,
+    valueTo?: unknown
+  ): FilterAstPredicateNode {
+    return {
+      kind: 'predicate',
+      source: 'sql',
+      target: this.resolveTarget(field),
+      operator: toStandardFilterOperator(operator),
+      value,
+      valueTo,
+      valueType: inferValueType(value, valueTo),
+      sourceOperator: operator,
+    };
+  }
+
+  private createNotNode(child: FilterAstNode): FilterAstNode {
+    return {
+      kind: 'not',
+      source: 'sql',
+      child,
+    };
+  }
+
+  private combineNodes(logic: 'AND' | 'OR', nodes: FilterAstNode[]): FilterAstNode {
+    const children: FilterAstNode[] = [];
+
+    for (const node of nodes) {
+      if (node.kind === 'group' && node.logic === logic && node.source === 'sql') {
+        children.push(...node.children);
+        continue;
+      }
+
+      children.push(node);
+    }
+
+    if (children.length === 1) {
+      return children[0];
+    }
+
+    return this.createGroup(logic, children);
+  }
+
+  private createGroup(
+    logic: 'AND' | 'OR',
+    children: FilterAstNode[]
+  ): Extract<FilterAstNode, { kind: 'group' }> {
+    return {
+      kind: 'group',
+      logic,
+      children,
+      source: 'sql',
+    };
+  }
+
+  private parseValueList(): unknown[] {
+    this.expect('lparen');
+
+    const values: unknown[] = [];
+    do {
+      values.push(this.parseValue());
+    } while (this.match('comma'));
+
+    this.expect('rparen');
+    return values;
+  }
+
+  private parseValue(): unknown {
+    const token = this.peek();
+
+    switch (token.type) {
+      case 'string':
+      case 'number':
+        this.index += 1;
+        return token.value;
+      case 'param':
+        this.index += 1;
+        return this.resolveParam(String(token.value));
+      case 'identifier':
+        this.index += 1;
+        return token.value;
+      case 'keyword':
+        if (token.value === 'TRUE' || token.value === 'FALSE') {
+          this.index += 1;
+          return token.value === 'TRUE';
+        }
+
+        if (token.value === 'NULL') {
+          this.index += 1;
+          return null;
+        }
+        break;
+    }
+
+    throw this.error(`Expected a literal or parameter value, received ${describeToken(token)}.`);
+  }
+
+  private resolveParam(name: string): unknown {
+    if (!Object.prototype.hasOwnProperty.call(this.params, name)) {
+      throw this.error(`Missing named parameter :${name}`);
+    }
+
+    return this.params[name];
+  }
+
+  private expectIdentifier(): string {
+    const token = this.expect('identifier');
+    return String(token.value);
+  }
+
+  private matchComparisonOperator(): string | null {
+    const token = this.peek();
+    if (token.type !== 'operator') {
+      return null;
+    }
+
+    const operator = String(token.value);
+    if (!['=', '!=', '<>', '>', '<', '>=', '<='].includes(operator)) {
+      return null;
+    }
+
+    this.index += 1;
+    return operator;
+  }
+
+  private expectKeyword(value: string): void {
+    const token = this.peek();
+    if (token.type === 'keyword' && token.value === value) {
+      this.index += 1;
+      return;
+    }
+
+    throw this.error(`Expected keyword ${value}, received ${describeToken(token)}.`);
+  }
+
+  private matchKeyword(value: string): boolean {
+    const token = this.peek();
+    if (token.type === 'keyword' && token.value === value) {
+      this.index += 1;
+      return true;
+    }
+
+    return false;
+  }
+
+  private expect(type: SqlTokenType): SqlToken {
+    const token = this.peek();
+    if (token.type !== type) {
+      throw this.error(`Expected ${type}, received ${describeToken(token)}.`);
+    }
+
+    this.index += 1;
+    return token;
+  }
+
+  private match(type: SqlTokenType): boolean {
+    if (this.peek().type !== type) {
+      return false;
+    }
+
+    this.index += 1;
+    return true;
+  }
+
+  private peek(): SqlToken {
+    return this.tokens[this.index] ?? this.tokens[this.tokens.length - 1];
+  }
+
+  private error(message: string): Error {
+    return new Error(`${message} At position ${this.peek().start} in "${this.sql}".`);
+  }
+}
+
+function tokenizeSql(sql: string): SqlToken[] {
+  const tokens: SqlToken[] = [];
+  let index = 0;
+
+  while (index < sql.length) {
+    const char = sql[index];
+
+    if (/\s/.test(char)) {
+      index += 1;
+      continue;
+    }
+
+    if (char === '(') {
+      tokens.push({ type: 'lparen', value: char, start: index, end: index + 1 });
+      index += 1;
+      continue;
+    }
+
+    if (char === ')') {
+      tokens.push({ type: 'rparen', value: char, start: index, end: index + 1 });
+      index += 1;
+      continue;
+    }
+
+    if (char === ',') {
+      tokens.push({ type: 'comma', value: char, start: index, end: index + 1 });
+      index += 1;
+      continue;
+    }
+
+    if (char === ':') {
+      const start = index;
+      index += 1;
+      const nameStart = index;
+      while (index < sql.length && /[A-Za-z0-9_]/.test(sql[index])) {
+        index += 1;
+      }
+
+      if (nameStart === index || !/[A-Za-z_]/.test(sql[nameStart] ?? '')) {
+        throw new Error(`Invalid named parameter near position ${start} in "${sql}".`);
+      }
+
+      tokens.push({
+        type: 'param',
+        value: sql.slice(nameStart, index),
+        start,
+        end: index,
+      });
+      continue;
+    }
+
+    if (char === "'") {
+      const start = index;
+      index += 1;
+      let value = '';
+
+      while (index < sql.length) {
+        if (sql[index] === "'" && sql[index + 1] === "'") {
+          value += "'";
+          index += 2;
+          continue;
+        }
+
+        if (sql[index] === "'") {
+          index += 1;
+          tokens.push({ type: 'string', value, start, end: index });
+          value = '';
+          break;
+        }
+
+        value += sql[index];
+        index += 1;
+      }
+
+      if (value !== '') {
+        throw new Error(`Unterminated string literal near position ${start} in "${sql}".`);
+      }
+      continue;
+    }
+
+    if (/[0-9]/.test(char) || (char === '-' && /[0-9]/.test(sql[index + 1] ?? ''))) {
+      const start = index;
+      index += 1;
+      while (index < sql.length && /[0-9]/.test(sql[index])) {
+        index += 1;
+      }
+      if (sql[index] === '.' && /[0-9]/.test(sql[index + 1] ?? '')) {
+        index += 1;
+        while (index < sql.length && /[0-9]/.test(sql[index])) {
+          index += 1;
+        }
+      }
+
+      tokens.push({
+        type: 'number',
+        value: Number(sql.slice(start, index)),
+        start,
+        end: index,
+      });
+      continue;
+    }
+
+    const operator = readOperator(sql, index);
+    if (operator) {
+      tokens.push({
+        type: 'operator',
+        value: operator,
+        start: index,
+        end: index + operator.length,
+      });
+      index += operator.length;
+      continue;
+    }
+
+    if (/[A-Za-z_]/.test(char)) {
+      const start = index;
+      index += 1;
+      while (index < sql.length && /[A-Za-z0-9_.]/.test(sql[index])) {
+        index += 1;
+      }
+
+      const raw = sql.slice(start, index);
+      const upper = raw.toUpperCase();
+      tokens.push({
+        type: KEYWORDS.has(upper) ? 'keyword' : 'identifier',
+        value: KEYWORDS.has(upper) ? upper : raw,
+        start,
+        end: index,
+      });
+      continue;
+    }
+
+    throw new Error(`Unexpected token "${char}" at position ${index} in "${sql}".`);
+  }
+
+  tokens.push({ type: 'eof', value: '', start: sql.length, end: sql.length });
+  return tokens;
+}
+
+function readOperator(sql: string, index: number): string | null {
+  const twoChar = sql.slice(index, index + 2);
+  if (['>=', '<=', '!=', '<>'].includes(twoChar)) {
+    return twoChar;
+  }
+
+  if (['=', '>', '<'].includes(sql[index])) {
+    return sql[index];
+  }
+
+  return null;
+}
+
+function describeToken(token: SqlToken): string {
+  if (token.type === 'eof') {
+    return 'end of input';
+  }
+
+  return `${token.type}(${String(token.value)})`;
+}
+
+function countLikeWildcards(pattern: string): number {
+  return Array.from(pattern).filter((char) => char === '%').length;
+}
+
+function likePatternToRegex(pattern: string): string {
+  let regex = '^';
+
+  for (const char of pattern) {
+    if (char === '%') {
+      regex += '.*';
+      continue;
+    }
+
+    if (char === '_') {
+      regex += '.';
+      continue;
+    }
+
+    regex += escapeRegexChar(char);
+  }
+
+  return `${regex}$`;
+}
+
+function escapeRegexChar(char: string): string {
+  return char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function inferValueType(value: unknown, valueTo?: unknown): FilterAstPredicateNode['valueType'] {
+  const sample = valueTo !== undefined ? valueTo : value;
+
+  if (sample instanceof Date) {
+    return 'date';
+  }
+
+  if (typeof sample === 'number') {
+    return 'number';
+  }
+
+  if (typeof sample === 'boolean') {
+    return 'boolean';
+  }
+
+  if (Array.isArray(sample)) {
+    return 'enum';
+  }
+
+  if (typeof sample === 'string') {
+    return 'text';
+  }
+
+  if (sample == null) {
+    return 'unknown';
+  }
+
+  return 'custom';
 }

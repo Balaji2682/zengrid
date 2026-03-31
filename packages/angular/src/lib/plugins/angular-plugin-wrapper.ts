@@ -1,5 +1,11 @@
 import { Injector } from '@angular/core';
-import type { GridPlugin, GridStore, GridApiInterface, PluginDisposable } from '@zengrid/core';
+import type {
+  GridPlugin,
+  GridStore,
+  GridApiInterface,
+  GridPluginSetupContext,
+  PluginDisposable,
+} from '@zengrid/core';
 
 export class AngularPluginWrapper implements GridPlugin {
   readonly name: string;
@@ -16,9 +22,9 @@ export class AngularPluginWrapper implements GridPlugin {
     this.dependencies = plugin.dependencies;
   }
 
-  setup(store: GridStore, api: GridApiInterface): PluginDisposable | void {
+  setup(store: GridStore, api: GridApiInterface, context: GridPluginSetupContext): PluginDisposable | void {
     const plugin = this.pluginFactory(this.injector);
-    return plugin.setup(store, api);
+    return plugin.setup(store, api, context);
   }
 
   dispose(): void {

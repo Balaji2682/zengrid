@@ -1,4 +1,13 @@
-import type { CellRef, CellRange, GridOptions } from './index';
+import type {
+  CellRef,
+  CellRange,
+  FilterAst,
+  FilterAstNode,
+  FilterValueType,
+  GridOptions,
+  QueryPaginationState,
+  QueryState,
+} from './index';
 
 describe('Core Types', () => {
   describe('CellRef', () => {
@@ -47,6 +56,34 @@ describe('Core Types', () => {
       };
 
       expect(options.enableSelection).toBe(true);
+    });
+  });
+
+  describe('QueryState', () => {
+    it('should model a canonical query envelope with optional slices', () => {
+      const pagination: QueryPaginationState = {
+        page: 0,
+        pageSize: 25,
+        offset: 0,
+      };
+
+      const query: QueryState = {
+        version: 1,
+        pagination,
+      };
+
+      const node: FilterAstNode = {
+        kind: 'group',
+        logic: 'AND',
+        children: [],
+      };
+      const filter: FilterAst = { version: 1, root: node };
+      const valueType: FilterValueType = 'text';
+
+      expect(query.version).toBe(1);
+      expect(query.pagination).toEqual(pagination);
+      expect(filter.root).toEqual(node);
+      expect(valueType).toBe('text');
     });
   });
 });

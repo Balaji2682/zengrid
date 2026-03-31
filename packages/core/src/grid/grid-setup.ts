@@ -24,16 +24,19 @@ import { createFilterUIPlugin } from '../plugins/filter-ui';
 import { createInfiniteScrollPlugin } from '../plugins/infinite-scroll';
 import { createLifecyclePlugin } from '../plugins/lifecycle';
 import { ViewportModel } from '../features/viewport/viewport-model';
-import { resolveOperationMode } from '@zengrid/shared';
 import type { SlimGridContext } from './grid-context';
+import { GridOptionsManager } from './options-manager';
+import { resolveQueryExecutionMode } from './query-mode';
 
 export function createSlimContext(container: HTMLElement, options: GridOptions): SlimGridContext {
   if (!container) throw new Error('Container element is required');
   container.classList.add('zg-grid');
 
   const normalizedOptions: GridOptions = { ...options };
-  if (!normalizedOptions.rowCount || normalizedOptions.rowCount <= 0) normalizedOptions.rowCount = 0;
-  if (!normalizedOptions.colCount || normalizedOptions.colCount <= 0) normalizedOptions.colCount = 0;
+  if (!normalizedOptions.rowCount || normalizedOptions.rowCount <= 0)
+    normalizedOptions.rowCount = 0;
+  if (!normalizedOptions.colCount || normalizedOptions.colCount <= 0)
+    normalizedOptions.colCount = 0;
 
   const events = new EventEmitter<GridEvents>();
   const state: GridState = {
@@ -48,14 +51,22 @@ export function createSlimContext(container: HTMLElement, options: GridOptions):
 
   const store = new GridStoreImpl();
   const gridApi = new GridApiImpl(store, events);
-  const pluginHost = new PluginHost(store, gridApi);
+  const optionsManager = new GridOptionsManager(normalizedOptions);
+  const pluginHost = new PluginHost(store, gridApi, optionsManager.createPluginSetupContext());
   const pipelineRegistry = new PipelineRegistry();
   pipelineRegistry.registerPhase('sort', 10, 'pipeline.sort');
   pipelineRegistry.registerPhase('filter', 20, 'pipeline.filter');
 
+  gridApi.register('options', {
+    get: () => optionsManager.getOptions(),
+    getSnapshot: () => optionsManager.getOptionsSnapshot(),
+    subscribe: (listener: (change: any) => void) => optionsManager.subscribe(listener),
+  });
+
   return {
     container,
     options: normalizedOptions,
+    optionsManager,
     state,
     events,
     store,
@@ -68,36 +79,6 @@ export function createSlimContext(container: HTMLElement, options: GridOptions):
 
 export function installAllPlugins(ctx: SlimGridContext): void {
   const { options, events, pluginHost, store } = ctx;
-  const resolvedDataMode = resolveOperationMode(
-    {
-      mode: options.dataMode,
-      callback: options.onDataRequest,
-    },
-    {
-      rowCount: options.rowCount,
-    }
-  );
-
-  const resolvedSortMode = resolveOperationMode(
-    {
-      mode: options.sortMode,
-      callback: options.onSortRequest,
-    },
-    {
-      rowCount: options.rowCount,
-    }
-  );
-  const resolvedFilterMode = resolveOperationMode(
-    {
-      mode: options.filterMode,
-      callback: options.onFilterRequest,
-    },
-    {
-      rowCount: options.rowCount,
-    }
-  );
-  const sortExecutionMode = resolvedDataMode === 'backend' ? 'backend' : resolvedSortMode;
-  const filterExecutionMode = resolvedDataMode === 'backend' ? 'backend' : resolvedFilterMode;
 
   // Phase 0: Core
   pluginHost.use(createCorePlugin());
@@ -109,10 +90,8 @@ export function installAllPlugins(ctx: SlimGridContext): void {
   pluginHost.use(
     createSortPlugin({
       enableMultiSort: true,
-      sortMode: sortExecutionMode,
-      onSortRequest: options.onSortRequest,
       columns: options.columns,
-      usePipeline: sortExecutionMode === 'frontend',
+      usePipeline: resolveQueryExecutionMode(options.dataMode) !== 'backend',
     })
   );
 
@@ -121,10 +100,7 @@ export function installAllPlugins(ctx: SlimGridContext): void {
     createFilterPlugin({
       colCount: options.colCount,
       columns: options.columns,
-      filterMode: filterExecutionMode,
-      onFilterRequest: options.onFilterRequest,
-      usePipeline: filterExecutionMode === 'frontend',
-      useRequestCallback: resolvedDataMode !== 'backend',
+      usePipeline: resolveQueryExecutionMode(options.dataMode) !== 'backend',
     })
   );
 
@@ -151,7 +127,9 @@ export function installAllPlugins(ctx: SlimGridContext): void {
       state: ctx.state,
       container: ctx.container,
       events,
-      setDataAccessor: (da) => { dataAccessor = da; },
+      setDataAccessor: (da) => {
+        dataAccessor = da;
+      },
     })
   );
 
@@ -166,14 +144,16 @@ export function installAllPlugins(ctx: SlimGridContext): void {
   }
 
   // Phase 45: Editing
-  pluginHost.use(createEditingPlugin({
-    options,
-    state: ctx.state,
-    container: ctx.container,
-    events,
-    getColumnModel: () => columnModel,
-    getDataAccessor: () => dataAccessor,
-  }));
+  pluginHost.use(
+    createEditingPlugin({
+      options,
+      state: ctx.state,
+      container: ctx.container,
+      events,
+      getColumnModel: () => columnModel,
+      getDataAccessor: () => dataAccessor,
+    })
+  );
 
   // Phase 50: Scroll, Viewport
   pluginHost.use(createScrollPlugin());
@@ -217,7 +197,9 @@ export function installAllPlugins(ctx: SlimGridContext): void {
       events,
       getColumnModel: () => columnModel,
       getDataAccessor: () => dataAccessor,
-      setColumnModel: (cm: any) => { columnModel = cm; },
+      setColumnModel: (cm: any) => {
+        columnModel = cm;
+      },
     })
   );
 
@@ -225,9 +207,15 @@ export function installAllPlugins(ctx: SlimGridContext): void {
   ctx.pipelineRegistry.setupCoreComputeds(store);
 
   // Expose closures for late-binding references
-  (ctx as any)._setColumnModel = (cm: any) => { columnModel = cm; };
-  (ctx as any)._setDataAccessor = (da: any) => { dataAccessor = da; };
-  (ctx as any)._setSelectionChecker = (sc: any) => { selectionChecker = sc; };
+  (ctx as any)._setColumnModel = (cm: any) => {
+    columnModel = cm;
+  };
+  (ctx as any)._setDataAccessor = (da: any) => {
+    dataAccessor = da;
+  };
+  (ctx as any)._setSelectionChecker = (sc: any) => {
+    selectionChecker = sc;
+  };
   (ctx as any)._getColumnModel = () => columnModel;
   (ctx as any)._getDataAccessor = () => dataAccessor;
 
@@ -237,9 +225,15 @@ export function installAllPlugins(ctx: SlimGridContext): void {
   });
 
   // Install filter UI if columns + filter are present
-  if (options.columns && options.columns.length > 0 && pluginHost.has('filter') && !pluginHost.has('filter-ui')) {
+  if (
+    options.columns &&
+    options.columns.length > 0 &&
+    pluginHost.has('filter') &&
+    !pluginHost.has('filter-ui')
+  ) {
     pluginHost.use(
       createFilterUIPlugin({
+        getColumns: () => options.columns,
         getColumnDef: (dataCol: number) => options.columns?.[dataCol],
         getColumnModel: () => columnModel,
         getContainer: () => ctx.container,
@@ -278,7 +272,13 @@ export function installAllPlugins(ctx: SlimGridContext): void {
         },
         getDOM: () => {
           const domApi = ctx.gridApi.getMethod('dom', 'getCanvas');
-          return domApi ? { canvas: domApi(), updateCanvasSize: (w: number, h: number) => store.exec('dom:updateCanvasSize', w, h) } : null;
+          return domApi
+            ? {
+                canvas: domApi(),
+                updateCanvasSize: (w: number, h: number) =>
+                  store.exec('dom:updateCanvasSize', w, h),
+              }
+            : null;
         },
         setData: (data: any[][]) => {
           store.exec('core:setData', data);
@@ -288,7 +288,7 @@ export function installAllPlugins(ctx: SlimGridContext): void {
         },
         getState: () => ({ data: ctx.state.data, rowCount: options.rowCount }),
         setRowCount: (count: number) => {
-          options.rowCount = count;
+          ctx.optionsManager.update({ rowCount: count });
         },
       })
     );

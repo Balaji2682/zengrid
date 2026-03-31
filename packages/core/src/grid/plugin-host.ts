@@ -1,5 +1,12 @@
-import type { GridStore, GridPlugin, GridApi, PluginDisposable } from '../reactive/types';
+import type {
+  GridStore,
+  GridPlugin,
+  GridApi,
+  PluginDisposable,
+  GridPluginSetupContext,
+} from '../reactive/types';
 import { recordPluginTiming } from '../reactive/debug';
+import type { GridOptions } from '../types';
 
 interface PluginEntry {
   plugin: GridPlugin;
@@ -8,11 +15,22 @@ interface PluginEntry {
 
 export class PluginHost {
   private plugins = new Map<string, PluginEntry>();
+  private readonly setupContext: GridPluginSetupContext;
 
   constructor(
     private store: GridStore,
-    private api: GridApi
-  ) {}
+    private api: GridApi,
+    setupContext?: GridPluginSetupContext
+  ) {
+    const options = setupContext?.options ?? ({} as GridOptions);
+    this.setupContext = setupContext ?? {
+      options,
+      getOptions: () => options,
+      getOptionsSnapshot: () => ({ ...options }),
+      updateOptions: () => null,
+      subscribeOptions: () => () => {},
+    };
+  }
 
   use(plugin: GridPlugin): void {
     if (this.plugins.has(plugin.name)) {
@@ -31,7 +49,7 @@ export class PluginHost {
     this.plugins.set(plugin.name, entry);
 
     const start = performance.now();
-    const disposable = plugin.setup(this.store, this.api);
+    const disposable = plugin.setup(this.store, this.api, this.setupContext);
     const duration = performance.now() - start;
     recordPluginTiming(plugin.name, duration);
 

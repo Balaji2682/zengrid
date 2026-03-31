@@ -2,19 +2,19 @@ import { resolveOperationMode } from '@zengrid/shared';
 import type { EventEmitter } from '../events/event-emitter';
 import type { GridEvents } from '../events/grid-events';
 import { ArrayAccessor } from '../data/data-accessor/array-accessor';
-import { hasActiveFilterExpression } from '../features/filtering/filter-expression';
-import { buildSortRequest } from '../features/sorting/sort-request';
+import { buildQueryState, buildRangeQueryPaginationState } from '../features/query/query-state';
 import type { DataAccessor } from '../data/data-accessor/data-accessor.interface';
 import { DataManager } from '../data/data-manager';
 import type {
   DataLoadRequest,
   DataRequestState,
-  FilterModel,
+  FilterAst,
   GridOptions,
   GridState,
   SortState,
 } from '../types';
 import type { GridPlugin, PluginDisposable } from '../reactive/types';
+import { shouldDelegateQueryState } from '../grid/query-mode';
 
 export interface DataPluginOptions {
   options: GridOptions;
@@ -64,7 +64,7 @@ export function createDataPlugin(opts: DataPluginOptions): GridPlugin {
     name: 'data',
     phase: 35,
     dependencies: ['core', 'dom', 'rendering'],
-    setup(store, api): PluginDisposable {
+    setup(store, api, context): PluginDisposable {
       const { options, state, container, events, setDataAccessor } = opts;
       const mode = resolveOperationMode(
         {
@@ -91,6 +91,7 @@ export function createDataPlugin(opts: DataPluginOptions): GridPlugin {
         return { teardown: [] };
       }
 
+      let knownTotalRows = options.rowCount;
       let dataManager = createManager();
       let activeLoad: Promise<void> | null = null;
       let lastFailedRange: RequestedRange | null = null;
@@ -101,7 +102,7 @@ export function createDataPlugin(opts: DataPluginOptions): GridPlugin {
 
       function createManager(): DataManager {
         return new DataManager({
-          rowCount: options.rowCount,
+          rowCount: knownTotalRows,
           events,
           modeConfig: {
             mode: options.dataMode,
@@ -117,6 +118,10 @@ export function createDataPlugin(opts: DataPluginOptions): GridPlugin {
 
       function getStatus(): DataRequestState {
         return store.get('data.status') as DataRequestState;
+      }
+
+      function delegatesQueryState(): boolean {
+        return shouldDelegateQueryState(context.options.dataMode);
       }
 
       function setStatus(partial: Partial<DataRequestState>): void {
@@ -251,8 +256,11 @@ export function createDataPlugin(opts: DataPluginOptions): GridPlugin {
       function syncManagerData(): void {
         const data = dataManager.getData();
         const totalRows = dataManager.getTotalRows();
+        const previousTotalRows = knownTotalRows;
+        const { top, left } = state.scrollPosition;
 
-        options.rowCount = totalRows;
+        knownTotalRows = totalRows;
+        context.updateOptions({ rowCount: totalRows });
         state.data = data;
         setDataAccessor(new ArrayAccessor(data));
 
@@ -260,6 +268,9 @@ export function createDataPlugin(opts: DataPluginOptions): GridPlugin {
         store.exec('rendering:setRowCount', totalRows);
         store.exec('rendering:updateCanvasSize');
         store.exec('rendering:clearCache');
+        if (totalRows !== previousTotalRows) {
+          store.exec('rendering:renderCells', top, left);
+        }
         store.exec('rendering:refresh');
 
         if (api.getMethod('pagination', 'update')) {
@@ -294,10 +305,14 @@ export function createDataPlugin(opts: DataPluginOptions): GridPlugin {
           };
         }
 
-        const range = visibleRange ?? (() => {
-          const getVisibleRange = api.getMethod('rendering', 'getVisibleRange');
-          return getVisibleRange ? getVisibleRange() as { startRow: number; endRow: number } | null : null;
-        })();
+        const range =
+          visibleRange ??
+          (() => {
+            const getVisibleRange = api.getMethod('rendering', 'getVisibleRange');
+            return getVisibleRange
+              ? (getVisibleRange() as { startRow: number; endRow: number } | null)
+              : null;
+          })();
 
         if (range && range.endRow > range.startRow) {
           return {
@@ -346,61 +361,23 @@ export function createDataPlugin(opts: DataPluginOptions): GridPlugin {
         };
       }
 
-      function buildRequest(range: RequestedRange): {
-        request: DataLoadRequest;
-        filterExportArgs?: {
-          filter?: any;
-          queryString?: string;
-          graphqlWhere?: Record<string, any>;
-          sql?: any;
-          expression?: import('../types').FilterExpression;
-        };
-      } {
-        const sortState = (store.get('sort.state') as SortState[] | undefined) ?? [];
-        const filterState = (store.get('filter.state') as FilterModel[] | undefined) ?? [];
-        const getFilterExpression = api.getMethod('filter', 'getExpression');
-        const rawFilterExpression = getFilterExpression
-          ? (getFilterExpression() as import('../types').FilterExpression | null)
+      function buildRequest(range: RequestedRange): DataLoadRequest {
+        const sortState = delegatesQueryState()
+          ? ((store.get('sort.state') as SortState[] | undefined) ?? [])
           : null;
-        const filterExpression = rawFilterExpression ?? undefined;
-        const activeFilterExpression = hasActiveFilterExpression(rawFilterExpression)
-          ? rawFilterExpression ?? undefined
-          : undefined;
-        const filterExports = activeFilterExpression?.filterExport ?? undefined;
-        const pageSize = Math.max(1, range.endRow - range.startRow);
-        const sortRequest = buildSortRequest(sortState, options.columns);
+        const filterAst = delegatesQueryState()
+          ? ((store.get('filter.ast') as FilterAst | null | undefined) ?? null)
+          : null;
 
         return {
-          request: {
-            startRow: range.startRow,
-            endRow: range.endRow,
-            sortState: sortRequest.sortState,
-            sort: sortRequest.sort,
-            filterExpression,
-            filterState: filterState.length > 0 ? filterState : undefined,
-            filter: activeFilterExpression?.fieldState ?? undefined,
-            filterExport: filterExports
-              ? {
-                  queryString: filterExports.rest?.queryString ?? '',
-                  graphqlWhere: filterExports.graphql?.where ?? {},
-                  sql: filterExports.sql,
-                }
-              : undefined,
-            pagination: {
-              page: Math.floor(range.startRow / pageSize),
-              pageSize,
-              offset: range.startRow,
-            },
-          },
-          filterExportArgs: filterExpression
-            ? {
-                expression: filterExpression,
-                filter: activeFilterExpression?.fieldState ?? undefined,
-                queryString: activeFilterExpression ? (filterExports?.rest?.queryString ?? '') : undefined,
-                graphqlWhere: activeFilterExpression ? (filterExports?.graphql?.where ?? {}) : undefined,
-                sql: activeFilterExpression ? filterExports?.sql : undefined,
-              }
-            : undefined,
+          startRow: range.startRow,
+          endRow: range.endRow,
+          query: buildQueryState({
+            sortState,
+            filterAst,
+            pagination: buildRangeQueryPaginationState(range.startRow, range.endRow),
+            columns: options.columns,
+          }),
         };
       }
 
@@ -425,7 +402,7 @@ export function createDataPlugin(opts: DataPluginOptions): GridPlugin {
           return;
         }
 
-        const { request, filterExportArgs } = buildRequest(missingRange);
+        const request = buildRequest(missingRange);
         let loadedSuccessfully = false;
 
         clearOverlay();
@@ -442,14 +419,7 @@ export function createDataPlugin(opts: DataPluginOptions): GridPlugin {
         let currentLoad: Promise<void> | null = null;
         currentLoad = (async () => {
           try {
-            await dataManager.loadRange(
-              missingRange.startRow,
-              missingRange.endRow,
-              request.sortState,
-              request.filterState,
-              filterExportArgs,
-              request.sort,
-            );
+            await dataManager.loadRange(missingRange.startRow, missingRange.endRow, request.query);
 
             syncManagerData();
             loadedSuccessfully = true;
@@ -478,8 +448,7 @@ export function createDataPlugin(opts: DataPluginOptions): GridPlugin {
               return;
             }
 
-            const requestError =
-              error instanceof Error ? error : new Error('Failed to load data');
+            const requestError = error instanceof Error ? error : new Error('Failed to load data');
             lastFailedRange = missingRange;
             setStatus({
               status: 'error',
@@ -521,7 +490,9 @@ export function createDataPlugin(opts: DataPluginOptions): GridPlugin {
         await loadRange(getRequestedRange(reason, visibleRange));
       }
 
-      async function reloadCurrentContext(reason: Exclude<LoadReason, 'initial' | 'scroll'>): Promise<void> {
+      async function reloadCurrentContext(
+        reason: Exclude<LoadReason, 'initial' | 'scroll'>
+      ): Promise<void> {
         replaceManager();
         await loadRange(getRequestedRange(reason));
       }
@@ -543,14 +514,14 @@ export function createDataPlugin(opts: DataPluginOptions): GridPlugin {
           void ensureVisibleRange('scroll', payload.visibleRange);
         }),
         events.on('sort:change', () => {
-          if (!isRendered()) {
+          if (!isRendered() || !delegatesQueryState()) {
             return;
           }
 
           void reloadCurrentContext('sort');
         }),
         events.on('filter:change', () => {
-          if (!isRendered()) {
+          if (!isRendered() || !delegatesQueryState()) {
             return;
           }
 
