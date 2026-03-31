@@ -1,6 +1,6 @@
 {
   "name": "@zengrid/angular",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Angular wrapper for ZenGrid high-performance data grid",
   "keywords": [
     "angular",
@@ -24,11 +24,11 @@
     "@angular/core": ">=18.0.0",
     "@angular/common": ">=18.0.0",
     "@angular/forms": ">=18.0.0",
-    "@zengrid/core": ">=1.2.1"
+    "@zengrid/core": ">=1.2.2"
   },
   "dependencies": {
-    "@zengrid/core": "1.2.1",
-    "@zengrid/shared": "1.2.1",
+    "@zengrid/core": "1.2.2",
+    "@zengrid/shared": "1.2.2",
     "tslib": "^2.3.0"
   },
   "sideEffects": false,
