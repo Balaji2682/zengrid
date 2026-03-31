@@ -10,7 +10,7 @@ export interface ButtonHandlersContext {
   columnWidths: number[];
   actualDataMode: 'frontend' | 'backend';
   actualSortMode: 'frontend' | 'backend';
-  filterMode: 'frontend' | 'backend';
+  actualFilterMode: 'frontend' | 'backend';
   loadingTemplate: 'simple' | 'animated' | 'modern' | 'skeleton' | 'overlay';
   setLoadingTemplate: (template: any) => void;
 }
@@ -107,14 +107,12 @@ Using scrollThroughCells() API...
 Current Operation Modes:
 Data:   ${context.actualDataMode.toUpperCase()}
 Sort:   ${context.actualSortMode.toUpperCase()}
-Filter: ${context.filterMode.toUpperCase()}
+Filter: ${context.actualFilterMode.toUpperCase()}
 
 To change modes:
 1. Edit src/main.ts
 2. Change variable values:
-   - dataMode: 'frontend' | 'backend'
-   - sortMode: 'frontend' | 'backend'
-   - filterMode: 'frontend' | 'backend'
+   - dataMode: 'frontend' | 'backend' | 'auto'
 3. Refresh the page
     `.trim();
 

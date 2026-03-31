@@ -208,10 +208,7 @@ export class DropdownRenderer implements CellRenderer {
       this.eventManager.removeEventHandlers(container);
 
       if (menu) {
-        if (menu.style.display !== 'none') {
-          this.state.closeDropdown(menu, container);
-        }
-
+        this.state.dismissDropdown(menu, container);
         globalOpenDropdownMenus.delete(container);
         menu.remove();
       }

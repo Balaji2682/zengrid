@@ -1,17 +1,34 @@
-import type { ColumnDef, FilterModel, FilterOperator } from '../types';
+import type {
+  ColumnDef,
+  FilterExpression,
+  FilterModel,
+  FilterOperator,
+  FilterQuickState,
+} from '../types';
 import type { EventEmitter } from '../events/event-emitter';
 import type { GridEvents } from '../events/grid-events';
+import { OverlayManager } from '../overlay/overlay-manager';
+import type {
+  FieldFilterCondition,
+  FieldFilterGroup,
+  FieldFilterState,
+} from '../features/filtering/types';
 
 interface FilterUIOptions {
   container: HTMLElement;
   events: EventEmitter<GridEvents>;
+  columns?: ColumnDef[];
   getFilterState: () => FilterModel[];
+  getFilterExpression: () => FilterExpression | null;
   setColumnFilter: (
     column: number,
     conditions: Array<{ operator: string; value: any }>,
     logic?: 'AND' | 'OR'
   ) => void;
+  setFieldState: (state: FieldFilterState) => void;
   clearColumnFilter: (column: number) => void;
+  clearQuickFilter: () => void;
+  clearAllFilters: () => void;
   getColumnDef: (dataCol: number) => ColumnDef | undefined;
   mapVisualToDataCol: (visualCol: number) => number;
 }
@@ -57,33 +74,57 @@ const DATE_OPERATORS: OperatorOption[] = [
 export class GridFilterUI {
   private container: HTMLElement;
   private events: EventEmitter<GridEvents>;
+  private columns: ColumnDef[];
   private getFilterState: () => FilterModel[];
+  private getFilterExpression: () => FilterExpression | null;
   private setColumnFilter: (
     column: number,
     conditions: Array<{ operator: string; value: any }>,
     logic?: 'AND' | 'OR'
   ) => void;
+  private setFieldState: (state: FieldFilterState) => void;
   private clearColumnFilter: (column: number) => void;
+  private clearQuickFilter: () => void;
+  private clearAllFilters: () => void;
   private getColumnDef: (dataCol: number) => ColumnDef | undefined;
   private mapVisualToDataCol: (visualCol: number) => number;
+  private overlayManager: OverlayManager;
 
   private popup: HTMLElement | null = null;
-  private documentClickHandler: ((e: MouseEvent) => void) | null = null;
-  private keyHandler: ((e: KeyboardEvent) => void) | null = null;
+  private chipBar: HTMLElement | null = null;
+  private popupKeyHandler: ((e: KeyboardEvent) => void) | null = null;
   private filterClickUnsub: (() => void) | null = null;
+  private filterChangeUnsub: (() => void) | null = null;
 
   constructor(options: FilterUIOptions) {
     this.container = options.container;
     this.events = options.events;
+    this.columns = options.columns ?? [];
     this.getFilterState = options.getFilterState;
+    this.getFilterExpression = options.getFilterExpression;
     this.setColumnFilter = options.setColumnFilter;
+    this.setFieldState = options.setFieldState;
     this.clearColumnFilter = options.clearColumnFilter;
+    this.clearQuickFilter = options.clearQuickFilter;
+    this.clearAllFilters = options.clearAllFilters;
     this.getColumnDef = options.getColumnDef;
     this.mapVisualToDataCol = options.mapVisualToDataCol;
+    this.overlayManager = OverlayManager.getInstance();
 
     this.filterClickUnsub = this.events.on('header:filter:click', (payload) => {
       this.openFilterPopup(payload);
     });
+    this.filterChangeUnsub = this.events.on('filter:change', () => {
+      this.renderFilterChips();
+    });
+
+    this.renderFilterChips();
+  }
+
+  setColumns(columns: ColumnDef[]): void {
+    this.columns = [...columns];
+    this.closePopup();
+    this.renderFilterChips();
   }
 
   private openFilterPopup(payload: GridEvents['header:filter:click']): void {
@@ -309,8 +350,49 @@ export class GridFilterUI {
     this.popup = popup;
     document.body.appendChild(popup);
 
-    this.positionPopup(payload.anchorElement, popup);
-    this.installGlobalHandlers(applyFilter);
+    this.popupKeyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        const active = document.activeElement as HTMLElement | null;
+        if (!active || !popup.contains(active)) {
+          return;
+        }
+
+        const tag = active.tagName.toLowerCase();
+        if (tag === 'input' || tag === 'select') {
+          e.preventDefault();
+          applyFilter();
+        }
+      }
+    };
+    popup.addEventListener('keydown', this.popupKeyHandler);
+
+    if (!payload.anchorElement) {
+      const containerRect = this.container.getBoundingClientRect();
+      popup.style.position = 'fixed';
+      popup.style.top = `${containerRect.top + 12}px`;
+      popup.style.left = `${containerRect.left + 12}px`;
+    }
+
+    this.overlayManager.open({
+      overlay: popup,
+      anchor: payload.anchorElement,
+      additionalElements: payload.anchorElement ? [payload.anchorElement] : [],
+      restoreFocusOnClose: !!payload.anchorElement,
+      restoreFocusTo: payload.anchorElement ?? null,
+      closeOnEscape: true,
+      positionOptions: {
+        placement: 'bottom-start',
+        offset: 4,
+        viewportPadding: 8,
+      },
+      scrollOptions: {
+        closeOnOutOfView: true,
+        repositionOnScroll: false,
+      },
+      onClose: () => {
+        this.teardownPopup();
+      },
+    });
 
     // Focus first input for usability
     setTimeout(() => {
@@ -382,77 +464,383 @@ export class GridFilterUI {
     return column.header?.text ?? column.field ?? `Column ${index}`;
   }
 
-  private positionPopup(anchor: HTMLElement | undefined, popup: HTMLElement): void {
-    popup.style.position = 'fixed';
+  private getColumnLabelByField(field: string): string {
+    const index = this.columns.findIndex((column) => column.field === field);
+    if (index < 0) {
+      return field;
+    }
 
-    if (!anchor) {
-      const containerRect = this.container.getBoundingClientRect();
-      popup.style.top = `${containerRect.top + 12}px`;
-      popup.style.left = `${containerRect.left + 12}px`;
+    return this.getColumnLabel(this.columns[index], index);
+  }
+
+  private getColumnLabelByIndex(index: number): string {
+    const column = this.columns[index] ?? this.getColumnDef(index);
+    if (!column) {
+      return `Column ${index}`;
+    }
+
+    return this.getColumnLabel(column, index);
+  }
+
+  private ensureChipBar(): HTMLElement {
+    if (this.chipBar && this.chipBar.isConnected) {
+      return this.chipBar;
+    }
+
+    const host =
+      (this.container.querySelector('.zg-viewport') as HTMLElement | null) ?? this.container;
+    const chipBar = document.createElement('div');
+    chipBar.className = 'zg-filter-chip-bar';
+    chipBar.style.display = 'none';
+    host.appendChild(chipBar);
+    this.chipBar = chipBar;
+    return chipBar;
+  }
+
+  private renderFilterChips(): void {
+    const chipBar = this.ensureChipBar();
+    const expression = this.getFilterExpression();
+    const chips = this.buildChipDescriptors(expression);
+
+    chipBar.replaceChildren();
+
+    if (chips.length === 0) {
+      chipBar.style.display = 'none';
+      this.updateChipBarLayout();
       return;
     }
 
-    const rect = anchor.getBoundingClientRect();
-    popup.style.top = `${rect.bottom + 4}px`;
-    popup.style.left = `${rect.left}px`;
+    chipBar.style.display = '';
 
-    const popupRect = popup.getBoundingClientRect();
-    if (popupRect.right > window.innerWidth) {
-      popup.style.left = `${Math.max(8, window.innerWidth - popupRect.width - 8)}px`;
+    const title = document.createElement('span');
+    title.className = 'zg-filter-chip-bar__title';
+    title.textContent = 'Filters';
+    chipBar.appendChild(title);
+
+    const chipList = document.createElement('div');
+    chipList.className = 'zg-filter-chip-bar__list';
+
+    for (const chip of chips) {
+      chipList.appendChild(this.createChipElement(chip.label, chip.remove));
     }
-    if (popupRect.bottom > window.innerHeight) {
-      popup.style.top = `${Math.max(8, rect.top - popupRect.height - 4)}px`;
+
+    chipBar.appendChild(chipList);
+
+    const clearAllButton = document.createElement('button');
+    clearAllButton.type = 'button';
+    clearAllButton.className = 'zg-filter-chip-bar__clear';
+    clearAllButton.textContent = 'Clear all';
+    clearAllButton.addEventListener('click', () => {
+      this.clearAllFilters();
+    });
+    chipBar.appendChild(clearAllButton);
+
+    this.updateChipBarLayout();
+  }
+
+  private createChipElement(label: string, remove: () => void): HTMLElement {
+    const chip = document.createElement('div');
+    chip.className = 'zg-filter-chip';
+    chip.title = label;
+
+    const text = document.createElement('span');
+    text.className = 'zg-filter-chip__label';
+    text.textContent = label;
+    chip.appendChild(text);
+
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.className = 'zg-filter-chip__remove';
+    removeButton.setAttribute('aria-label', `Remove filter ${label}`);
+    removeButton.textContent = '×';
+    removeButton.addEventListener('click', () => {
+      remove();
+    });
+    chip.appendChild(removeButton);
+
+    return chip;
+  }
+
+  private buildChipDescriptors(expression: FilterExpression | null): Array<{
+    label: string;
+    remove: () => void;
+  }> {
+    const chips: Array<{ label: string; remove: () => void }> = [];
+    const fieldRoot = expression?.fieldState?.root ?? null;
+    const quickFilter = expression?.quickFilter ?? null;
+
+    if (fieldRoot) {
+      chips.push(...this.buildFieldStateChips(fieldRoot));
+    }
+
+    if (quickFilter?.query?.trim()) {
+      chips.push({
+        label: this.describeQuickFilter(quickFilter),
+        remove: () => this.clearQuickFilter(),
+      });
+    }
+
+    return chips;
+  }
+
+  private buildFieldStateChips(root: FieldFilterGroup): Array<{
+    label: string;
+    remove: () => void;
+  }> {
+    if (root.logic !== 'AND') {
+      return [
+        {
+          label: this.describeFieldGroup(root),
+          remove: () => this.applyStructuredRoot(null),
+        },
+      ];
+    }
+
+    const chips: Array<{ label: string; remove: () => void }> = [];
+
+    root.conditions.forEach((condition, index) => {
+      chips.push({
+        label: this.describeFieldCondition(condition),
+        remove: () => this.removeTopLevelCondition(index),
+      });
+    });
+
+    (root.groups ?? []).forEach((group, index) => {
+      chips.push({
+        label: this.describeFieldGroup(group),
+        remove: () => this.removeTopLevelGroup(index),
+      });
+    });
+
+    return chips;
+  }
+
+  private removeTopLevelCondition(conditionIndex: number): void {
+    const root = this.getFilterExpression()?.fieldState?.root;
+    if (!root) {
+      return;
+    }
+
+    if (root.logic !== 'AND') {
+      this.applyStructuredRoot(null);
+      return;
+    }
+
+    const nextRoot = this.normalizeFieldGroup({
+      logic: root.logic,
+      conditions: root.conditions.filter((_, index) => index !== conditionIndex),
+      groups: root.groups ? [...root.groups] : undefined,
+    });
+
+    this.applyStructuredRoot(nextRoot);
+  }
+
+  private removeTopLevelGroup(groupIndex: number): void {
+    const root = this.getFilterExpression()?.fieldState?.root;
+    if (!root) {
+      return;
+    }
+
+    if (root.logic !== 'AND') {
+      this.applyStructuredRoot(null);
+      return;
+    }
+
+    const nextRoot = this.normalizeFieldGroup({
+      logic: root.logic,
+      conditions: [...root.conditions],
+      groups: root.groups?.filter((_, index) => index !== groupIndex),
+    });
+
+    this.applyStructuredRoot(nextRoot);
+  }
+
+  private applyStructuredRoot(root: FieldFilterGroup | null): void {
+    this.setFieldState({
+      root,
+      activeFields: this.collectActiveFields(root),
+      timestamp: Date.now(),
+    });
+  }
+
+  private collectActiveFields(root: FieldFilterGroup | null): string[] {
+    if (!root) {
+      return [];
+    }
+
+    const fields = new Set<string>();
+    const visit = (group: FieldFilterGroup) => {
+      for (const condition of group.conditions) {
+        fields.add(condition.field);
+      }
+
+      for (const nested of group.groups ?? []) {
+        visit(nested);
+      }
+    };
+
+    visit(root);
+    return Array.from(fields);
+  }
+
+  private normalizeFieldGroup(group: FieldFilterGroup): FieldFilterGroup | null {
+    const normalizedGroups = group.groups?.filter(
+      (nested) => nested.conditions.length > 0 || (nested.groups?.length ?? 0) > 0
+    );
+
+    if (group.conditions.length === 0 && (normalizedGroups?.length ?? 0) === 0) {
+      return null;
+    }
+
+    return {
+      logic: group.logic,
+      conditions: [...group.conditions],
+      groups: normalizedGroups && normalizedGroups.length > 0 ? normalizedGroups : undefined,
+    };
+  }
+
+  private describeQuickFilter(quickFilter: FilterQuickState): string {
+    const query = this.formatValue(quickFilter.query);
+    if (!quickFilter.columns || quickFilter.columns.length === 0) {
+      return `Search ${query}`;
+    }
+
+    const labels = quickFilter.columns.map((column) => this.getColumnLabelByIndex(column));
+    return `Search ${labels.join(', ')} ${query}`;
+  }
+
+  private describeFieldGroup(group: FieldFilterGroup, nested = false): string {
+    const parts = [
+      ...group.conditions.map((condition) => this.describeFieldCondition(condition)),
+      ...(group.groups ?? []).map((child) => this.describeFieldGroup(child, true)),
+    ];
+
+    if (parts.length === 0) {
+      return 'Filter group';
+    }
+
+    const joined = parts.join(` ${group.logic} `);
+    return nested && parts.length > 1 ? `(${joined})` : joined;
+  }
+
+  private describeFieldCondition(condition: FieldFilterCondition): string {
+    const label = this.getColumnLabelByField(condition.field);
+
+    switch (condition.operator) {
+      case 'eq':
+      case 'equals':
+        return `${label} = ${this.formatValue(condition.value)}`;
+      case 'neq':
+      case 'notEquals':
+        return `${label} != ${this.formatValue(condition.value)}`;
+      case 'contains':
+        return `${label} contains ${this.formatValue(condition.value)}`;
+      case 'notContains':
+        return `${label} does not contain ${this.formatValue(condition.value)}`;
+      case 'startsWith':
+        return `${label} starts with ${this.formatValue(condition.value)}`;
+      case 'endsWith':
+        return `${label} ends with ${this.formatValue(condition.value)}`;
+      case 'gt':
+      case 'greaterThan':
+        return `${label} > ${this.formatValue(condition.value)}`;
+      case 'gte':
+      case 'greaterThanOrEqual':
+        return `${label} >= ${this.formatValue(condition.value)}`;
+      case 'lt':
+      case 'lessThan':
+        return `${label} < ${this.formatValue(condition.value)}`;
+      case 'lte':
+      case 'lessThanOrEqual':
+        return `${label} <= ${this.formatValue(condition.value)}`;
+      case 'between':
+        return `${label} between ${this.formatValue(condition.value)} and ${this.formatValue(
+          condition.valueTo
+        )}`;
+      case 'in':
+        return `${label} in ${this.formatValue(condition.value)}`;
+      case 'notIn':
+        return `${label} not in ${this.formatValue(condition.value)}`;
+      case 'isNull':
+      case 'blank':
+        return `${label} is blank`;
+      case 'isNotNull':
+      case 'notBlank':
+        return `${label} is not blank`;
+      case 'regex':
+        return `${label} matches ${this.formatValue(condition.value)}`;
+      default:
+        return condition.value === undefined
+          ? `${label} ${condition.operator}`
+          : `${label} ${condition.operator} ${this.formatValue(condition.value)}`;
     }
   }
 
-  private installGlobalHandlers(applyHandler?: () => void): void {
-    this.documentClickHandler = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (this.popup && target && !this.popup.contains(target)) {
-        this.closePopup();
-      }
-    };
+  private formatValue(value: any): string {
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => this.formatValue(item)).join(', ')}]`;
+    }
 
-    this.keyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        this.closePopup();
-        return;
-      }
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
 
-      if (e.key === 'Enter' && this.popup && applyHandler) {
-        const active = document.activeElement as HTMLElement | null;
-        if (active && this.popup.contains(active)) {
-          const tag = active.tagName.toLowerCase();
-          if (tag !== 'input' && tag !== 'select') {
-            return;
-          }
-          e.preventDefault();
-          applyHandler();
-        }
-      }
-    };
+    if (typeof value === 'string') {
+      return `"${value}"`;
+    }
 
-    document.addEventListener('click', this.documentClickHandler, true);
-    document.addEventListener('keydown', this.keyHandler);
-    window.addEventListener('resize', this.closePopup);
+    if (value === null) {
+      return 'null';
+    }
+
+    if (value === undefined) {
+      return 'undefined';
+    }
+
+    return String(value);
+  }
+
+  private updateChipBarLayout(): void {
+    const scrollContainer = this.container.querySelector(
+      '.zg-scroll-container'
+    ) as HTMLElement | null;
+    const header = this.container.querySelector('.zg-header') as HTMLElement | null;
+    const headerHeight = header?.offsetHeight ?? 0;
+    const chipHeight =
+      this.chipBar && this.chipBar.style.display !== 'none' ? this.chipBar.offsetHeight : 0;
+
+    if (this.chipBar) {
+      this.chipBar.style.top = `${headerHeight}px`;
+    }
+
+    if (scrollContainer) {
+      scrollContainer.style.top = `${headerHeight + chipHeight}px`;
+    }
   }
 
   private closePopup = (): void => {
+    const popup = this.popup;
+    if (!popup) return;
+
+    if (this.overlayManager.isOpen(popup)) {
+      this.overlayManager.close(popup);
+      return;
+    }
+
+    this.teardownPopup();
+  };
+
+  private teardownPopup(): void {
+    if (this.popupKeyHandler && this.popup) {
+      this.popup.removeEventListener('keydown', this.popupKeyHandler);
+      this.popupKeyHandler = null;
+    }
+
     if (this.popup) {
       this.popup.remove();
       this.popup = null;
     }
-
-    if (this.documentClickHandler) {
-      document.removeEventListener('click', this.documentClickHandler, true);
-      this.documentClickHandler = null;
-    }
-    if (this.keyHandler) {
-      document.removeEventListener('keydown', this.keyHandler);
-      this.keyHandler = null;
-    }
-    window.removeEventListener('resize', this.closePopup);
-  };
+  }
 
   destroy(): void {
     this.closePopup();
@@ -460,5 +848,14 @@ export class GridFilterUI {
       this.filterClickUnsub();
       this.filterClickUnsub = null;
     }
+    if (this.filterChangeUnsub) {
+      this.filterChangeUnsub();
+      this.filterChangeUnsub = null;
+    }
+    if (this.chipBar) {
+      this.chipBar.remove();
+      this.chipBar = null;
+    }
+    this.updateChipBarLayout();
   }
 }

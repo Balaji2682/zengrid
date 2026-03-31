@@ -1,10 +1,6 @@
 import type { DropdownOption } from './dropdown-types';
 import { deepEqual, SimpleLRUCache } from '../renderer-utils';
-
-/**
- * Global set to track all open dropdowns across all instances (singleton pattern)
- */
-export const globalOpenDropdowns = new Set<HTMLElement>();
+import { OverlayManager } from '../../../overlay/overlay-manager';
 
 /**
  * Tracks the live menu element for each dropdown container. Menus stay body-portaled
@@ -17,9 +13,11 @@ export const globalOpenDropdownMenus = new WeakMap<HTMLElement, HTMLElement>();
  */
 export class DropdownState {
   private filteredOptionsCache: SimpleLRUCache<string, DropdownOption[]>;
+  private overlayManager: OverlayManager;
 
   constructor() {
     this.filteredOptionsCache = new SimpleLRUCache<string, DropdownOption[]>(200);
+    this.overlayManager = OverlayManager.getInstance();
   }
 
   /**
@@ -182,64 +180,56 @@ export class DropdownState {
    * Opens dropdown menu
    */
   openDropdown(menu: HTMLElement, container: HTMLElement): void {
-    this.closeOtherDropdowns(container);
-
-    // Append menu to body to escape overflow:hidden on grid cells
-    if (menu.parentElement !== document.body) {
-      document.body.appendChild(menu);
-    }
-
-    menu.style.display = 'block';
-    container.classList.add('open');
-    globalOpenDropdowns.add(container);
-    globalOpenDropdownMenus.set(container, menu);
-
-    // Position menu below the trigger
     const trigger = container.querySelector('.zg-dropdown-trigger') as HTMLElement;
-    if (trigger) {
-      trigger.setAttribute('aria-expanded', 'true');
-      const rect = trigger.getBoundingClientRect();
-      menu.style.position = 'fixed';
-      menu.style.left = `${rect.left}px`;
-      menu.style.top = `${rect.bottom + 2}px`;
-      menu.style.minWidth = `${rect.width}px`;
+    if (!trigger) return;
 
-      // If menu would overflow below viewport, open above
-      const menuRect = menu.getBoundingClientRect();
-      if (menuRect.bottom > window.innerHeight) {
-        menu.style.top = `${rect.top - menuRect.height - 2}px`;
-      }
-    }
+    this.overlayManager.open({
+      overlay: menu,
+      anchor: trigger,
+      additionalElements: [container],
+      positionOptions: {
+        placement: 'bottom-start',
+        offset: 2,
+        viewportPadding: 8,
+      },
+      scrollOptions: {
+        closeOnOutOfView: true,
+        repositionOnScroll: false,
+      },
+      restoreFocusOnClose: true,
+      restoreFocusTo: trigger,
+      onOpen: () => {
+        menu.style.display = 'block';
+        menu.style.minWidth = `${trigger.getBoundingClientRect().width}px`;
+        container.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true');
+        globalOpenDropdownMenus.set(container, menu);
+      },
+      onClose: () => {
+        this.applyClosedState(menu, container);
+        this.clearSearch(menu);
+      },
+    });
   }
 
   /**
    * Closes dropdown menu
    */
   closeDropdown(menu: HTMLElement, container: HTMLElement): void {
-    menu.style.display = 'none';
-    container.classList.remove('open');
-    globalOpenDropdowns.delete(container);
-
-    const trigger = container.querySelector('.zg-dropdown-trigger') as HTMLElement;
-    if (trigger) {
-      trigger.setAttribute('aria-expanded', 'false');
+    if (this.overlayManager.isOpen(menu)) {
+      this.overlayManager.close(menu);
+      return;
     }
+
+    this.applyClosedState(menu, container);
   }
 
-  /**
-   * Closes all other open dropdowns
-   */
-  private closeOtherDropdowns(currentContainer: HTMLElement): void {
-    for (const openContainer of Array.from(globalOpenDropdowns)) {
-      if (openContainer !== currentContainer) {
-        const openMenu =
-          globalOpenDropdownMenus.get(openContainer) ||
-          (openContainer.querySelector('.zg-dropdown-menu') as HTMLElement | null);
-        if (openMenu) {
-          this.closeDropdown(openMenu, openContainer);
-        }
-      }
+  dismissDropdown(menu: HTMLElement, container: HTMLElement): void {
+    if (this.overlayManager.isOpen(menu)) {
+      this.overlayManager.dismiss(menu);
     }
+
+    this.applyClosedState(menu, container);
   }
 
   /**
@@ -259,6 +249,16 @@ export class DropdownState {
           (header as HTMLElement).style.display = '';
         });
       }
+    }
+  }
+
+  private applyClosedState(menu: HTMLElement, container: HTMLElement): void {
+    menu.style.display = 'none';
+    container.classList.remove('open');
+
+    const trigger = container.querySelector('.zg-dropdown-trigger') as HTMLElement;
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
     }
   }
 }

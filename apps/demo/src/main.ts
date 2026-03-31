@@ -8,7 +8,7 @@ import '../../../packages/core/src/datetime-core/theming/datetime.css';
 import { PaginationDemo } from './pagination-demo';
 
 // Import configurations
-import { ROW_COUNT, COL_COUNT, ROW_HEIGHT, dataMode, sortMode, filterMode, loadingTemplate } from './config/constants';
+import { ROW_COUNT, COL_COUNT, ROW_HEIGHT, dataMode, loadingTemplate } from './config/constants';
 import { getColumns } from './config/columns';
 import { createGridConfig } from './config/grid-config';
 
@@ -23,7 +23,7 @@ import { updateStats, startPeriodicStatsUpdate } from './ui/stats-updater';
 import { setupSidebarMenu } from './ui/sidebar';
 
 // Import handlers
-import { createSortHandler } from './handlers/sort-handler';
+import { createDataRequestHandler } from './handlers/sort-handler';
 import { setupButtonHandlers } from './handlers/button-handlers';
 
 // Import features
@@ -48,12 +48,10 @@ function main() {
   const columns = getColumns(data);
   const columnWidths = columns.map(col => col.width);
 
-  // 3. Create sort handler
-  const handleSortRequest = createSortHandler({
-    data,
-    sortMode,
-    getGrid: () => grid,
-    setData: (newData) => { data = newData; },
+  // 3. Create backend data handler
+  const handleDataRequest = createDataRequestHandler({
+    columns,
+    getData: () => data,
   });
 
   // 4. Track loading template state
@@ -68,10 +66,8 @@ function main() {
     columnWidths,
     columns,
     dataMode,
-    sortMode,
-    filterMode,
     loadingTemplate: currentLoadingTemplate,
-    onSortRequest: handleSortRequest,
+    onDataRequest: dataMode !== 'frontend' ? handleDataRequest : undefined,
     onScroll: (scrollTop, scrollLeft) => {
       if (gridRef) {
         gridRef.updateColumnResizeHandles();
@@ -101,7 +97,8 @@ function main() {
   const modeIndicator = document.getElementById('mode-indicator')!;
   const actualDataMode = grid.getDataMode();
   const actualSortMode = grid.getSortMode();
-  modeIndicator.textContent = `Data: ${actualDataMode.toUpperCase()}, Sort: ${actualSortMode.toUpperCase()}, Filter: ${filterMode.toUpperCase()}`;
+  const actualFilterMode = grid.getFilterMode();
+  modeIndicator.textContent = `Data: ${actualDataMode.toUpperCase()}, Sort: ${actualSortMode.toUpperCase()}, Filter: ${actualFilterMode.toUpperCase()}`;
 
   // 10. Initialize FPS monitor
   const fpsElement = document.getElementById('fps-monitor')!;
@@ -116,10 +113,7 @@ function main() {
     columns,
     columnWidths,
     dataMode,
-    sortMode,
-    filterMode,
     loadingTemplate: currentLoadingTemplate,
-    onSortRequest: handleSortRequest,
     getData: () => data,
     setData: (newData) => { data = newData; },
   });
@@ -134,7 +128,7 @@ function main() {
     columnWidths,
     actualDataMode,
     actualSortMode,
-    filterMode,
+    actualFilterMode,
     loadingTemplate: currentLoadingTemplate,
     setLoadingTemplate: (template) => { currentLoadingTemplate = template; },
   });

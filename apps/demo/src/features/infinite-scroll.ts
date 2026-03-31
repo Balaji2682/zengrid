@@ -7,11 +7,8 @@ export interface InfiniteScrollContext {
   container: HTMLElement;
   columns: any[];
   columnWidths: number[];
-  dataMode: 'frontend' | 'backend';
-  sortMode: 'frontend' | 'backend';
-  filterMode: 'frontend' | 'backend';
+  dataMode: 'frontend' | 'backend' | 'auto';
   loadingTemplate: 'simple' | 'animated' | 'modern' | 'skeleton' | 'overlay';
-  onSortRequest?: (sortState: any[]) => Promise<void>;
   getData: () => any[][];
   setData: (newData: any[][]) => void;
 }
@@ -76,10 +73,7 @@ export class InfiniteScrollManager {
       columnWidths: this.context.columnWidths,
       columns: this.context.columns,
       dataMode: this.context.dataMode,
-      sortMode: this.context.sortMode,
-      filterMode: this.context.filterMode,
       loadingTemplate: this.context.loadingTemplate,
-      onSortRequest: this.context.onSortRequest,
       onScroll: (scrollTop, scrollLeft) => {
         const grid = newGrid;
         if (grid) {
@@ -158,10 +152,7 @@ export class InfiniteScrollManager {
       columnWidths: this.context.columnWidths,
       columns: this.context.columns,
       dataMode: this.context.dataMode,
-      sortMode: this.context.sortMode,
-      filterMode: this.context.filterMode,
       loadingTemplate: this.context.loadingTemplate,
-      onSortRequest: this.context.onSortRequest,
       onScroll: (scrollTop, scrollLeft) => {
         const grid = newGrid;
         if (grid) {

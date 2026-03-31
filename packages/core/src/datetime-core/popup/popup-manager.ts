@@ -1,17 +1,13 @@
 /**
- * Singleton popup lifecycle manager
- *
- * Ensures only one datetime popup is open at a time.
- * Handles coordination between click-outside and scroll handlers.
+ * Datetime popup lifecycle manager backed by the shared overlay manager.
  */
 
-import { ClickOutsideManager } from './click-outside';
 import {
-  ScrollHandler,
-  type ScrollAction,
-  type ScrollHandlerOptions,
-} from '../scroll/scroll-handler';
-import { positionPopup, type PositionOptions } from './popup-positioner';
+  OverlayManager,
+  type OverlayConfig,
+} from '../../overlay/overlay-manager';
+import type { ScrollHandlerOptions } from '../scroll/scroll-handler';
+import type { PositionOptions } from './popup-positioner';
 
 export interface PopupConfig {
   /** The popup element */
@@ -30,22 +26,13 @@ export interface PopupConfig {
   scrollOptions?: ScrollHandlerOptions;
 }
 
-interface ActivePopup {
-  config: PopupConfig;
-  cleanupClickOutside: () => void;
-  cleanupScroll: () => void;
-}
-
-/**
- * Manages popup lifecycle for datetime pickers
- * Singleton pattern ensures only one popup is open at a time
- */
 export class PopupManager {
   private static instance: PopupManager | null = null;
-  private activePopup: ActivePopup | null = null;
-  private popupStack: Map<HTMLElement, ActivePopup> = new Map();
+  private overlayManager: OverlayManager;
 
-  private constructor() {}
+  private constructor() {
+    this.overlayManager = OverlayManager.getInstance();
+  }
 
   static getInstance(): PopupManager {
     if (!PopupManager.instance) {
@@ -58,116 +45,53 @@ export class PopupManager {
    * Open a popup, closing any existing one first
    */
   open(config: PopupConfig): void {
-    // Close existing popup first (singleton pattern)
-    if (this.activePopup && this.activePopup.config.popup !== config.popup) {
-      this.close(this.activePopup.config.popup);
-    }
-
-    // Check if this popup is already open
-    if (this.popupStack.has(config.popup)) {
-      return;
-    }
-
-    const { popup, anchor, additionalElements, positionOptions, scrollOptions } = config;
-
-    // Position popup before showing to prevent flash at top-left
-    popup.style.visibility = 'hidden';
-    popup.style.display = 'block';
-    positionPopup(anchor, popup, positionOptions);
-    popup.style.visibility = '';
-    popup.setAttribute('data-zg-datetime-popup', 'true');
-
-    // Set up click-outside detection
-    const clickOutsideManager = ClickOutsideManager.getInstance();
-    const cleanupClickOutside = () => {
-      clickOutsideManager.unregister(popup);
-    };
-    clickOutsideManager.register(
-      popup,
-      () => this.close(popup),
-      additionalElements ? [anchor, ...additionalElements] : [anchor]
-    );
-
-    // Set up scroll handling
-    const scrollHandler = ScrollHandler.getInstance();
-    const cleanupScroll = () => {
-      scrollHandler.detach(popup);
-    };
-    scrollHandler.attach(
-      anchor,
-      popup,
-      (action: ScrollAction) => {
-        if (action === 'close') {
-          this.close(popup);
-        } else if (action === 'reposition') {
-          positionPopup(anchor, popup, positionOptions);
-        }
+    const overlayConfig: OverlayConfig = {
+      overlay: config.popup,
+      anchor: config.anchor,
+      onClose: () => {
+        config.popup.removeAttribute('data-zg-datetime-popup');
+        config.onClose();
       },
-      scrollOptions
-    );
-
-    const activePopup: ActivePopup = {
-      config,
-      cleanupClickOutside,
-      cleanupScroll,
+      onOpen: () => {
+        config.popup.setAttribute('data-zg-datetime-popup', 'true');
+        config.onOpen?.();
+      },
+      additionalElements: config.additionalElements ? [config.anchor, ...config.additionalElements] : [config.anchor],
+      positionOptions: config.positionOptions,
+      scrollOptions: config.scrollOptions,
+      restoreFocusOnClose: true,
+      restoreFocusTo: config.anchor,
     };
 
-    this.activePopup = activePopup;
-    this.popupStack.set(popup, activePopup);
-
-    // Call onOpen callback
-    config.onOpen?.();
+    this.overlayManager.open(overlayConfig);
   }
 
   /**
    * Close a specific popup
    */
   close(popup: HTMLElement): void {
-    const activePopup = this.popupStack.get(popup);
-    if (!activePopup) return;
-
-    // Clean up handlers
-    activePopup.cleanupClickOutside();
-    activePopup.cleanupScroll();
-
-    // Hide popup
-    popup.style.display = 'none';
-    popup.removeAttribute('data-zg-datetime-popup');
-    popup.removeAttribute('data-zg-placement');
-
-    // Call onClose callback
-    activePopup.config.onClose();
-
-    // Remove from stack
-    this.popupStack.delete(popup);
-
-    // Clear active if this was the active popup
-    if (this.activePopup?.config.popup === popup) {
-      this.activePopup = null;
-    }
+    this.overlayManager.close(popup);
   }
 
   /**
    * Close all open popups
    */
   closeAll(): void {
-    for (const [popup] of this.popupStack) {
-      this.close(popup);
-    }
+    this.overlayManager.closeAll();
   }
 
   /**
    * Check if a popup is currently open
    */
   isOpen(popup: HTMLElement): boolean {
-    return this.popupStack.has(popup);
+    return this.overlayManager.isOpen(popup);
   }
 
   /**
    * Get the currently active popup
    */
   getActivePopup(): HTMLElement | null {
-    return this.activePopup?.config.popup ?? null;
+    return this.overlayManager.getActiveOverlay();
   }
 
   /**
@@ -185,18 +109,14 @@ export class PopupManager {
    * Reposition an open popup
    */
   reposition(popup: HTMLElement): void {
-    const activePopup = this.popupStack.get(popup);
-    if (!activePopup) return;
-
-    positionPopup(activePopup.config.anchor, popup, activePopup.config.positionOptions);
+    this.overlayManager.reposition(popup);
   }
 
   /**
    * Reset manager state (for testing)
    */
   reset(): void {
-    this.closeAll();
-    this.activePopup = null;
+    this.overlayManager.reset();
   }
 }
 

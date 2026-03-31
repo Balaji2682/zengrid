@@ -11,9 +11,7 @@ export const categories = ['Category A', 'Category B', 'Category C', 'Category D
 export const tagOptions = ['Frontend', 'Backend', 'DevOps', 'Design', 'QA', 'Mobile'];
 
 // Operation modes
-export let dataMode: 'frontend' | 'backend' = 'frontend';
-export let sortMode: 'frontend' | 'backend' = 'frontend';
-export let filterMode: 'frontend' | 'backend' = 'frontend';
+export let dataMode: 'frontend' | 'backend' | 'auto' = 'frontend';
 
 // Loading template state
 export let loadingTemplate: 'simple' | 'animated' | 'modern' | 'skeleton' | 'overlay' = 'modern';

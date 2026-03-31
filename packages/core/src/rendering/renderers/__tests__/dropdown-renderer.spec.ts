@@ -557,6 +557,18 @@ describe('DropdownRenderer', () => {
       expect(menu.style.display).toBe('none');
     });
 
+    it('should close on outside click through the shared overlay manager', () => {
+      renderer.render(element, params);
+
+      const trigger = element.querySelector('.zg-dropdown-trigger') as HTMLElement;
+      const menu = getDropdownMenu(element);
+
+      trigger.click();
+      document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+      expect(menu.style.display).toBe('none');
+    });
+
     it('should not close dropdown after multi-select', () => {
       const renderer = new DropdownRenderer({
         options: defaultOptions,

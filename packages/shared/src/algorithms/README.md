@@ -190,7 +190,7 @@ Explores as far as possible along each branch before backtracking.
 **Example:**
 
 ```typescript
-import { hasCycle } from '@zengrid/shared/algorithms/graph';
+import { hasCycle } from '@zengrid/shared';
 
 // Build dependency graph
 const graph: AdjacencyList<string> = new Map([
@@ -256,7 +256,7 @@ Explores nodes level by level, visiting all neighbors before going deeper.
 **Example:**
 
 ```typescript
-import { bfs, bfsShortestPath } from '@zengrid/shared/algorithms/graph';
+import { bfs, bfsShortestPath } from '@zengrid/shared';
 
 // When user changes A1, find all affected cells
 const affectedCells = bfs(dependencyGraph, 'A1');
@@ -353,7 +353,7 @@ Probabilistic data structure for fast membership testing.
 **Example:**
 
 ```typescript
-import { BloomFilter } from '@zengrid/shared/algorithms/filter';
+import { BloomFilter } from '@zengrid/shared';
 
 // Index 10,000 product names with 1% false positive rate
 const bloom = new BloomFilter(10000, 0.01);
@@ -412,7 +412,7 @@ Detects patterns in sequences for smart autofill.
 **Example:**
 
 ```typescript
-import { SequenceDetector } from '@zengrid/shared/algorithms/pattern';
+import { SequenceDetector } from '@zengrid/shared';
 
 const detector = new SequenceDetector();
 
@@ -561,7 +561,7 @@ timsort(columnData, numericComparator);
 
 ```typescript
 import { DependencyGraph } from '@zengrid/shared';
-import { dfs, bfs } from '@zengrid/shared/algorithms/graph';
+import { dfs, bfs } from '@zengrid/shared';
 
 const graph = new DependencyGraph();
 

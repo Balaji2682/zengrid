@@ -96,8 +96,6 @@ export function applyFilters(filterPanel: FilterPanel, grid: Grid, columns: any[
           const dataRow = (grid as any).cachedVisibleRows[row];
           return (grid as any).dataAccessor?.getValue(dataRow, col);
         },
-        sortMode: (grid as any).options.sortMode,
-        onSortRequest: (grid as any).options.onSortRequest,
         events: (grid as any).events,
       });
       (grid as any).sortManager.setSortState(currentSort);

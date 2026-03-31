@@ -24,16 +24,19 @@ interface BenchmarkResult {
 
 const results: BenchmarkResult[] = [];
 
-function benchmark(name: string, dataset: string, fn: () => void, iterations = 1): BenchmarkResult {
-  // Warm up
-  fn();
-
-  // Force garbage collection if available
+function getHeapUsed(): number {
   if (global.gc) {
     global.gc();
   }
 
-  const memBefore = process.memoryUsage().heapUsed;
+  return process.memoryUsage().heapUsed;
+}
+
+function benchmark(name: string, dataset: string, fn: () => void, iterations = 1): BenchmarkResult {
+  // Warm up
+  fn();
+
+  const memBefore = getHeapUsed();
   const start = performance.now();
 
   for (let i = 0; i < iterations; i++) {
@@ -41,7 +44,7 @@ function benchmark(name: string, dataset: string, fn: () => void, iterations = 1
   }
 
   const end = performance.now();
-  const memAfter = process.memoryUsage().heapUsed;
+  const memAfter = getHeapUsed();
 
   const time = (end - start) / iterations;
   const memory = memAfter - memBefore;
@@ -434,8 +437,8 @@ describe('Binary Search Performance Benchmarks', () => {
       );
 
       // Binary search is O(1) space complexity
-      // Note: JavaScript heap measurements include GC and runtime overhead
-      if (result.memory) {
+      // Only enforce this when we can normalize heap snapshots with manual GC.
+      if (global.gc && result.memory !== undefined) {
         expect(Math.abs(result.memory)).toBeLessThan(20 * 1024 * 1024); // < 20MB (JS runtime variance)
       }
     });

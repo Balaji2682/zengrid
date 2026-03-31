@@ -85,25 +85,6 @@ export class DropdownEventManager {
       }
     }
 
-    const documentClickHandler = (e: Event) => {
-      const target = e.target as Node;
-      if (!container.contains(target) && !menu.contains(target)) {
-        this.closeDropdown(menu, container, options.searchable);
-      }
-    };
-    document.addEventListener('click', documentClickHandler);
-    handlers.set('documentClick', documentClickHandler);
-
-    // Close dropdown when any ancestor scrolls (menu is fixed-positioned on body)
-    const scrollHandler = () => {
-      if (menu.style.display !== 'none') {
-        this.closeDropdown(menu, container, options.searchable);
-      }
-    };
-    // Use capture to catch scroll on any ancestor
-    document.addEventListener('scroll', scrollHandler, true);
-    handlers.set('scroll', scrollHandler);
-
     const keydownHandler = (e: Event) => {
       this.navigation.handleKeyboardNavigation(
         e as KeyboardEvent,
@@ -132,11 +113,7 @@ export class DropdownEventManager {
       const searchInput = menu?.querySelector('.zg-dropdown-search-input');
 
       for (const [eventType, handler] of handlers) {
-        if (eventType === 'documentClick') {
-          document.removeEventListener('click', handler);
-        } else if (eventType === 'scroll') {
-          document.removeEventListener('scroll', handler, true);
-        } else if (eventType === 'click' && trigger) {
+        if (eventType === 'click' && trigger) {
           trigger.removeEventListener('click', handler);
         } else if (eventType === 'optionClick' && menu) {
           menu.removeEventListener('click', handler);

@@ -1,54 +1,116 @@
-import { Grid } from '../../../../packages/core/src/grid/index';
-import { ROW_COUNT, COL_COUNT } from '../config/constants';
-import { generateData } from '../data/generators';
+import type {
+  ColumnDef,
+  DataLoadRequest,
+  DataLoadResponse,
+  SortDescriptor,
+} from '../../../../packages/core/src/types';
+import { FilterAstCompiler } from '../../../../packages/core/src/features/filtering/filter-ast-compiler';
 
-export interface SortHandlerContext {
-  data: any[][];
-  sortMode: 'frontend' | 'backend';
-  getGrid: () => Grid;
-  setData: (newData: any[][]) => void;
+export interface DataRequestHandlerContext {
+  columns: ColumnDef[];
+  getData: () => any[][];
 }
 
-/**
- * Create sort handler factory function
- */
-export function createSortHandler(context: SortHandlerContext) {
-  return async function handleSortRequest(sortState: any[]): Promise<void> {
-    if (context.sortMode !== 'backend') return;
+function resolveColumnIndex(descriptor: SortDescriptor, columns: ColumnDef[]): number {
+  if (typeof descriptor.column === 'number') {
+    return descriptor.column;
+  }
 
-    if (sortState.length === 0) {
-      const newData = generateData(ROW_COUNT, COL_COUNT);
-      context.setData(newData);
-      const grid = context.getGrid();
-      grid.setData(newData);
-      grid.refresh();
-      return;
-    }
+  if (descriptor.field) {
+    return columns.findIndex((column) => column.field === descriptor.field);
+  }
 
-    const { column, direction } = sortState[0];
+  return -1;
+}
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 300));
+function compareValues(left: any, right: any): number {
+  if (left === right) {
+    return 0;
+  }
 
-    const sortedData = [...context.data].sort((a, b) => {
-      const aVal = a[column];
-      const bVal = b[column];
+  if (left == null) {
+    return -1;
+  }
 
-      if (aVal === bVal) return 0;
+  if (right == null) {
+    return 1;
+  }
 
-      let result = 0;
-      if (typeof aVal === 'number' && typeof bVal === 'number') {
-        result = aVal - bVal;
-      } else {
-        result = String(aVal).localeCompare(String(bVal));
+  if (typeof left === 'number' && typeof right === 'number') {
+    return left - right;
+  }
+
+  return String(left).localeCompare(String(right));
+}
+
+function applyBackendFilter(
+  rows: any[][],
+  request: DataLoadRequest,
+  columns: ColumnDef[]
+): any[][] {
+  if (!request.query.filter?.root) {
+    return rows;
+  }
+
+  const compiler = new FilterAstCompiler({
+    colCount: columns.length || rows[0]?.length || 0,
+    columns,
+    getValue: (row, col) => rows[row]?.[col],
+  });
+  const compiled = compiler.compile(request.query.filter);
+
+  if (!compiled.predicate) {
+    return rows;
+  }
+
+  return rows.filter((_row, index) => compiled.predicate!(index));
+}
+
+function applyBackendSort(
+  rows: any[][],
+  descriptors: SortDescriptor[] | null,
+  columns: ColumnDef[]
+): any[][] {
+  if (!descriptors?.length) {
+    return rows;
+  }
+
+  const orderedDescriptors = [...descriptors].sort((left, right) => left.sortIndex - right.sortIndex);
+
+  return [...rows].sort((leftRow, rightRow) => {
+    for (const descriptor of orderedDescriptors) {
+      const column = resolveColumnIndex(descriptor, columns);
+      if (column < 0) {
+        continue;
       }
 
-      return direction === 'asc' ? result : -result;
-    });
+      const result = compareValues(leftRow[column], rightRow[column]);
+      if (result !== 0) {
+        return descriptor.direction === 'asc' ? result : -result;
+      }
+    }
 
-    context.setData(sortedData);
-    const grid = context.getGrid();
-    grid.setData(sortedData);
-    grid.refresh();
+    return 0;
+  });
+}
+
+export function createDataRequestHandler(context: DataRequestHandlerContext) {
+  return async function handleDataRequest(
+    request: DataLoadRequest
+  ): Promise<DataLoadResponse> {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const filteredRows = applyBackendFilter(context.getData(), request, context.columns);
+    const sortedRows = applyBackendSort(filteredRows, request.query.sort, context.columns);
+    const offset = request.query.pagination?.offset ?? request.startRow;
+    const pageSize = request.query.pagination?.pageSize ?? Math.max(0, request.endRow - request.startRow);
+    const data = sortedRows.slice(offset, offset + pageSize);
+
+    return {
+      data,
+      totalRows: sortedRows.length,
+      startRow: offset,
+      endRow: offset + data.length,
+    };
   };
 }

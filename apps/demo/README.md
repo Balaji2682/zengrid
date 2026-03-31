@@ -4,22 +4,12 @@ High-performance virtual scrolling grid with 100,000 rows
 
 ## Operation Modes
 
-ZenGrid supports **unified frontend/backend pattern** for all data operations:
+ZenGrid uses the unified `dataMode` + `onDataRequest` contract for backend data loading and explicit backend query execution.
 
 ### 1. **Data Loading Mode** (`dataMode`)
 - **Frontend** (default): All data loaded in memory
-- **Backend**: Data loaded on-demand via `onDataRequest` callback
-- **Auto**: Uses backend if `onDataRequest` provided, else frontend
-
-### 2. **Sort Mode** (`sortMode`)
-- **Frontend** (default): Sorts in memory using IndexMap
-- **Backend**: Delegates sorting to server via `onSortRequest`
-- **Auto**: Uses backend if `onSortRequest` provided, else frontend
-
-### 3. **Filter Mode** (`filterMode`)
-- **Frontend** (default): Filters in memory
-- **Backend**: Delegates filtering to server via `onFilterRequest`
-- **Auto**: Uses backend if `onFilterRequest` provided, else frontend
+- **Backend**: Data windows plus query state are delegated via `onDataRequest`
+- **Auto**: Uses backend loading when `onDataRequest` is present, while sort/filter stay frontend
 
 ## Demo Configuration
 
@@ -33,15 +23,11 @@ The demo currently uses:
 To test backend mode, change the following in `src/main.ts`:
 
 ```typescript
-// Line 163: Change from 'frontend' to 'backend'
-let dataMode: 'frontend' | 'backend' = 'backend';
-let sortMode: 'frontend' | 'backend' = 'backend';
+let dataMode: 'frontend' | 'backend' | 'auto' = 'backend';
 
 // Grid configuration will use:
 dataMode: dataMode,
-sortMode: sortMode,
 onDataRequest: dataMode === 'backend' ? handleDataRequest : undefined,
-onSortRequest: sortMode === 'backend' ? handleSortRequest : undefined,
 ```
 
 ## Backend Mode Benefits

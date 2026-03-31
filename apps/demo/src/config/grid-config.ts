@@ -1,4 +1,4 @@
-import { Grid } from '../../../../packages/core/src/grid/index';
+import type { GridOptions } from '../../../../packages/core/src/types';
 import { ROW_HEIGHT } from './constants';
 
 export interface GridConfigOptions {
@@ -6,11 +6,9 @@ export interface GridConfigOptions {
   colCount: number;
   columnWidths: number[];
   columns: any[];
-  dataMode: 'frontend' | 'backend';
-  sortMode: 'frontend' | 'backend';
-  filterMode: 'frontend' | 'backend';
+  dataMode: 'frontend' | 'backend' | 'auto';
   loadingTemplate: 'simple' | 'animated' | 'modern' | 'skeleton' | 'overlay';
-  onSortRequest?: (sortState: any[]) => Promise<void>;
+  onDataRequest?: GridOptions['onDataRequest'];
   onScroll?: (scrollTop: number, scrollLeft: number) => void;
   onColumnWidthsChange?: (widths: number[]) => void;
   infiniteScrolling?: any;
@@ -24,10 +22,8 @@ export function createGridConfig(options: GridConfigOptions) {
     columnWidths,
     columns,
     dataMode,
-    sortMode,
-    filterMode,
     loadingTemplate,
-    onSortRequest,
+    onDataRequest,
     onScroll,
     onColumnWidthsChange,
     infiniteScrolling,
@@ -60,10 +56,7 @@ export function createGridConfig(options: GridConfigOptions) {
     },
     // Operation Modes - unified pattern for frontend/backend operations
     dataMode,
-    sortMode,
-    filterMode,
-    // Backend handlers (only used when respective mode is 'backend' or 'auto')
-    onSortRequest: sortMode === 'backend' ? onSortRequest : undefined,
+    onDataRequest,
     // Loading indicator configuration
     loading: {
       enabled: true,

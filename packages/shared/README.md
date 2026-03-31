@@ -36,11 +36,10 @@ npm install @zengrid/shared
 import { SparseMatrix, binarySearch } from '@zengrid/shared';
 ```
 
-### Deep Imports (Better Tree-Shaking)
+### Package Imports
 
 ```typescript
-import { binarySearch } from '@zengrid/shared/algorithms/search';
-import { SparseMatrix } from '@zengrid/shared/data-structures/sparse-matrix';
+import { binarySearch, SparseMatrix } from '@zengrid/shared';
 ```
 
 ## License
