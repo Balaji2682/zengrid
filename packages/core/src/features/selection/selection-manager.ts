@@ -150,6 +150,31 @@ export class SelectionManager {
   }
 
   /**
+   * Toggle a single cell in a multi-selection: remove it if that exact 1×1
+   * cell is already selected, otherwise add it. Used for additive Ctrl/Cmd+click.
+   * Returns the resulting selected state of the cell.
+   */
+  toggleCell(row: number, col: number): boolean {
+    const existing = this.findCellSelection(row, col);
+    if (existing) {
+      this.selections.delete(existing.id);
+      this.rebuildIntervals();
+      this.emitSelectionChange();
+      return false;
+    }
+    this.addSelection({
+      id: this.generateId(),
+      type: 'cell',
+      startRow: row,
+      endRow: row,
+      startCol: col,
+      endCol: col,
+    });
+    this.emitSelectionChange();
+    return true;
+  }
+
+  /**
    * Select a row range
    */
   selectRows(startRow: number, endRow: number, additive: boolean = false): void {
@@ -371,6 +396,36 @@ export class SelectionManager {
 
     // Add to column interval tree
     this.colIntervals.insert({ start: selection.startCol, end: selection.endCol }, selection);
+  }
+
+  /**
+   * Find an exact 1×1 cell selection at the given coordinates, if one exists.
+   */
+  private findCellSelection(row: number, col: number): SelectionData | undefined {
+    for (const sel of this.selections.values()) {
+      if (
+        sel.type === 'cell' &&
+        sel.startRow === row &&
+        sel.endRow === row &&
+        sel.startCol === col &&
+        sel.endCol === col
+      ) {
+        return sel;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Rebuild the interval trees from the current selection map (after a removal).
+   */
+  private rebuildIntervals(): void {
+    this.rowIntervals = new IntervalTree<SelectionData>({ balanced: true });
+    this.colIntervals = new IntervalTree<SelectionData>({ balanced: true });
+    for (const sel of this.selections.values()) {
+      this.rowIntervals.insert({ start: sel.startRow, end: sel.endRow }, sel);
+      this.colIntervals.insert({ start: sel.startCol, end: sel.endCol }, sel);
+    }
   }
 
   /**

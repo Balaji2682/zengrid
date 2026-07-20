@@ -87,4 +87,12 @@ export interface CellRenderer {
    * @returns CSS class name or undefined
    */
   getCellClass?(params: RenderParams): string | undefined;
+
+  /**
+   * Optional: Whether this renderer's output may be cached as an HTML string.
+   * Defaults to `true`. Interactive/stateful renderers that attach event
+   * listeners or portal DOM outside the cell (e.g. dropdowns) must set this to
+   * `false`, since HTML-string caching drops listeners and out-of-cell nodes.
+   */
+  readonly cacheable?: boolean;
 }

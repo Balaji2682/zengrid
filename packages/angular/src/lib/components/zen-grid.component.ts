@@ -123,6 +123,7 @@ export class ZenGridComponent {
   readonly enableKeyboardNavigation = input<boolean | undefined>(undefined);
   readonly enableA11y = input<boolean | undefined>(undefined);
   readonly enableCellPooling = input<boolean | undefined>(undefined);
+  readonly hideLastColumnBorder = input<boolean | undefined>(undefined);
 
   // --- Mode Inputs ---
   readonly dataMode = input<OperationMode | undefined>(undefined);
@@ -137,9 +138,11 @@ export class ZenGridComponent {
   readonly infiniteScrolling = input<GridOptions['infiniteScrolling']>(undefined);
   readonly rowHeightMode = input<'fixed' | 'auto' | 'content-aware' | undefined>(undefined);
   readonly rowHeightConfig = input<RowHeightConfig | undefined>(undefined);
+  readonly headerHeight = input<GridOptions['headerHeight']>(undefined);
   readonly columnResize = input<GridOptions['columnResize']>(undefined);
   readonly columnDrag = input<GridOptions['columnDrag']>(undefined);
   readonly cellOverflow = input<CellOverflowConfig | undefined>(undefined);
+  readonly editing = input<GridOptions['editing']>(undefined);
   readonly autoResize = input<boolean | undefined>(undefined);
   readonly overscanRows = input<number | undefined>(undefined);
   readonly overscanCols = input<number | undefined>(undefined);
@@ -526,6 +529,7 @@ export class ZenGridComponent {
     const enKb = this.enableKeyboardNavigation();
     const enA11y = this.enableA11y();
     const enPool = this.enableCellPooling();
+    const hideLastColBorder = this.hideLastColumnBorder();
     const enResize = this.enableColumnResize();
     const enDrag = this.enableColumnDrag();
     const dMode = this.getConfiguredDataMode();
@@ -536,9 +540,11 @@ export class ZenGridComponent {
     const infScroll = this.infiniteScrolling();
     const rhMode = this.rowHeightMode();
     const rhConfig = this.rowHeightConfig();
+    const hdrHeight = this.headerHeight();
     const colResizeConf = this.columnResize();
     const colDragConf = this.columnDrag();
     const overflow = this.cellOverflow();
+    const editingConf = this.editing();
     const autoRes = this.autoResize();
     const oRows = this.overscanRows();
     const oCols = this.overscanCols();
@@ -558,6 +564,7 @@ export class ZenGridComponent {
     if (enKb !== undefined) opts.enableKeyboardNavigation = enKb;
     if (enA11y !== undefined) opts.enableA11y = enA11y;
     if (enPool !== undefined) opts.enableCellPooling = enPool;
+    if (hideLastColBorder !== undefined) opts.hideLastColumnBorder = hideLastColBorder;
     if (enResize !== undefined) opts.enableColumnResize = enResize;
     if (enDrag !== undefined) opts.enableColumnDrag = enDrag;
     if (dMode !== undefined) opts.dataMode = dMode;
@@ -568,9 +575,11 @@ export class ZenGridComponent {
     if (infScroll !== undefined) opts.infiniteScrolling = infScroll;
     if (rhMode !== undefined) opts.rowHeightMode = rhMode;
     if (rhConfig !== undefined) opts.rowHeightConfig = rhConfig;
+    if (hdrHeight !== undefined) opts.headerHeight = hdrHeight;
     if (colResizeConf !== undefined) opts.columnResize = colResizeConf;
     if (colDragConf !== undefined) opts.columnDrag = colDragConf;
     if (overflow !== undefined) opts.cellOverflow = overflow;
+    if (editingConf !== undefined) opts.editing = editingConf;
     if (autoRes !== undefined) opts.autoResize = autoRes;
     if (oRows !== undefined) opts.overscanRows = oRows;
     if (oCols !== undefined) opts.overscanCols = oCols;

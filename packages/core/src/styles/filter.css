@@ -1,0 +1,166 @@
+/**
+ * Filtering UI — active-filter chip bar and the per-column filter popup.
+ */
+
+/* Active filter chips */
+.zg-filter-chip-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 9;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--zg-border-color);
+  background: var(--zg-bg-secondary, #f9f9f9);
+  box-sizing: border-box;
+}
+
+.zg-filter-chip-bar__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--zg-text-secondary, #666666);
+  line-height: 24px;
+}
+
+.zg-filter-chip-bar__list {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.zg-filter-chip-bar__clear {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--zg-border-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--zg-text-secondary, #666666);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.zg-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--zg-border-color);
+  border-radius: 999px;
+  background: var(--zg-bg-color);
+  color: var(--zg-text-color);
+  box-shadow: var(--zg-shadow-sm);
+}
+
+.zg-filter-chip__label {
+  min-width: 0;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.zg-filter-chip__remove {
+  flex-shrink: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Filter popup */
+.zg-filter-popup {
+  position: fixed;
+  min-width: 220px;
+  max-width: 320px;
+  background: var(--zg-bg-color);
+  color: var(--zg-text-color);
+  border: 1px solid var(--zg-border-color);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  padding: 10px;
+  z-index: 2000;
+  font-size: 13px;
+}
+
+.zg-filter-popup__title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.zg-filter-popup__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.zg-filter-popup__conditions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.zg-filter-popup__condition {
+  padding: 6px;
+  border: 1px solid var(--zg-border-color);
+  border-radius: 4px;
+  background: var(--zg-bg-secondary, #f9f9f9);
+}
+
+.zg-filter-popup__condition-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.zg-filter-popup__select,
+.zg-filter-popup__input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--zg-border-color);
+  border-radius: 4px;
+  background: var(--zg-bg-color);
+  color: var(--zg-text-color);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.zg-filter-popup__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.zg-filter-popup__btn {
+  padding: 6px 10px;
+  border: 1px solid var(--zg-border-color);
+  background: var(--zg-header-bg);
+  color: var(--zg-header-text);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.zg-filter-popup__btn--add {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.zg-filter-popup__btn--remove {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.zg-filter-popup__btn.primary {
+  background: var(--zg-selected-border);
+  border-color: var(--zg-selected-border);
+  color: #fff;
+}

@@ -139,6 +139,24 @@ describe('SelectionPlugin', () => {
     expect(ranges.length).toBe(2);
   });
 
+  it('selection:toggleCell adds then removes an individual cell', () => {
+    host.use(createCorePlugin({ initialData: [[1], [2], [3]] }));
+    host.use(createSelectionPlugin({ enableMultiSelection: true }));
+
+    // Build a two-cell multi-selection additively.
+    store.exec('selection:selectCell', 0, 0, true);
+    store.exec('selection:toggleCell', 2, 0);
+    expect((store.get('selection.ranges') as CellRange[]).length).toBe(2);
+    expect(store.get('selection.active')).toEqual({ row: 2, col: 0 });
+
+    // Toggling the same cell again removes just that cell.
+    store.exec('selection:toggleCell', 2, 0);
+    const ranges = store.get('selection.ranges') as CellRange[];
+    expect(ranges.length).toBe(1);
+    expect(ranges[0].startRow).toBe(0);
+    expect(store.get('selection.active')).toBeNull();
+  });
+
   it('fires selection:change event', () => {
     const events: unknown[] = [];
     emitter.on('selection:change', (d: unknown) => events.push(d));
@@ -156,6 +174,7 @@ describe('SelectionPlugin', () => {
     host.use(createSelectionPlugin());
 
     expect(api.getMethod('selection', 'selectCell')).toBeDefined();
+    expect(api.getMethod('selection', 'toggleCell')).toBeDefined();
     expect(api.getMethod('selection', 'selectRange')).toBeDefined();
     expect(api.getMethod('selection', 'selectRows')).toBeDefined();
     expect(api.getMethod('selection', 'clear')).toBeDefined();

@@ -6,7 +6,7 @@ import type { ColumnModel } from '../../features/columns/column-model';
 import type { HeaderCellMetadata, HeaderManagerConfig } from './header-types';
 import { HeaderRendererRegistry } from '../../rendering/headers/header-registry';
 import { buildRenderParams } from './header-render-params';
-import { renderHeaderCell } from './header-dom-operations';
+import { renderHeaderCell, applyHeaderCellSizing } from './header-dom-operations';
 
 /**
  * Render all headers
@@ -86,6 +86,10 @@ export function updateHeaderByColumnId(
     filterState,
     config.eventEmitter
   );
+
+  // Keep the reserved width in sync (e.g. column resize) before the renderer
+  // updates, so custom renderers that don't resize themselves stay correct.
+  applyHeaderCellSizing(metadata.element, params);
 
   // Update the renderer
   metadata.renderer.update(metadata.element, params);

@@ -385,10 +385,18 @@ export type {
   EditingPluginOptions,
   UndoRedoPluginOptions,
 } from './plugins';
+export { createKeyboardPlugin } from './plugins';
+export type { KeyboardPluginOptions } from './plugins';
+export { createClipboardPlugin } from './plugins';
+export type { ClipboardPluginOptions } from './plugins';
 export { createDevToolsConnector } from './plugins';
 export type { DevToolsConnectorOptions } from './plugins';
-export { createAsyncSortPlugin, createAsyncFilterPlugin } from './plugins';
-export type { AsyncSortPluginOptions, AsyncFilterPluginOptions } from './plugins';
+export { createAsyncSortPlugin, createAsyncFilterPlugin, createFilterUIPlugin } from './plugins';
+export type {
+  AsyncSortPluginOptions,
+  AsyncFilterPluginOptions,
+  FilterUIPluginOptions,
+} from './plugins';
 export { createLifecyclePlugin } from './plugins';
 export type { LifecyclePluginOptions } from './plugins';
 

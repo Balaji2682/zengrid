@@ -9,6 +9,7 @@ import { ColumnDragManager, type ColumnDragOptions } from '../../features/column
 import { ColumnReorderPlugin } from '../../features/columns/plugins/column-reorder';
 import { ColumnVisibilityPlugin } from '../../features/columns/plugins/column-visibility';
 import { getHeaderText, resolveHeaderConfig } from '../../rendering/headers/header-config-resolver';
+import { resolveHeaderHeight } from '../header/header-types';
 
 export interface ColumnPluginOptions {
   options: GridOptions;
@@ -175,7 +176,7 @@ export function createColumnPlugin(opts: ColumnPluginOptions): GridPlugin {
             showPreview: options.columnResize?.showPreview,
             onColumnWidthsChange: options.onColumnWidthsChange,
             getScrollLeft: () => scrollContainer?.scrollLeft ?? 0,
-            getHeaderHeight: () => 40,
+            getHeaderHeight: () => resolveHeaderHeight(options),
             getViewportHeight: () => scrollContainer?.clientHeight ?? 0,
           });
         },

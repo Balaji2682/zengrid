@@ -1,0 +1,60 @@
+/**
+ * Column header — header row, header cells and the header select-all checkbox.
+ */
+
+.zg-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: var(--zg-header-bg);
+  color: var(--zg-header-text);
+  font-weight: 600;
+  border-bottom: 2px solid var(--zg-border-color);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.zg-header-cells {
+  display: flex;
+}
+
+.zg-header-cell {
+  box-sizing: border-box;
+  padding: var(--zg-header-padding);
+  border-right: var(--zg-border-width) solid var(--zg-border-color);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  background: var(--zg-header-bg);
+  color: var(--zg-header-text);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zg-header-cell:first-child {
+  border-left: var(--zg-border-width) solid var(--zg-border-color);
+}
+
+.zg-header-cell:hover {
+  background: var(--zg-hover-bg);
+}
+
+/* hideLastColumnBorder: match the body — the last header cell drops its own
+   right border so it doesn't double up against a bordered container. */
+.zg-hide-last-col-border .zg-header-cell:last-child {
+  border-right-color: transparent;
+}
+
+/* Header checkbox */
+.zg-header-checkbox {
+  justify-content: center;
+}
+
+.zg-header-checkbox-input {
+  cursor: pointer;
+  accent-color: var(--zg-selected-border);
+}

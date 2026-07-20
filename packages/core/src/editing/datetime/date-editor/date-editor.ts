@@ -187,6 +187,12 @@ export class DateEditor implements CellEditor<Date | null> {
       type: 'default',
       selectionDatesMode: 'single',
       enableJumpToSelectedDate: true,
+      // Follow the editor's theme (default 'light') instead of the library's
+      // 'system' default, which would render dark on a dark OS even when the
+      // grid is on a light theme. themeAttrDetect:false stops the library from
+      // auto-detecting a page attribute and overriding selectedTheme.
+      selectedTheme: this.options.theme === 'auto' ? 'system' : this.options.theme || 'light',
+      themeAttrDetect: false,
       dateMin: minDate ? formatDateForCalendar(minDate) : '1900-01-01',
       dateMax: maxDate ? formatDateForCalendar(maxDate) : '2099-12-31',
       onClickDate: (self: any, event: any) => {

@@ -19,8 +19,8 @@ export function createSearchInput(
 
   input.style.width = '100%';
   input.style.height = '100%';
-  input.style.border = 'none';
-  input.style.outline = '2px solid #4CAF50';
+  input.style.border = '2px solid #4CAF50';
+  input.style.outline = 'none';
   input.style.padding = '4px 8px';
   input.style.fontSize = '13px';
   input.style.fontFamily = 'inherit';
@@ -45,8 +45,8 @@ export function createDisplayElement(
 
   display.style.width = '100%';
   display.style.height = '100%';
-  display.style.border = 'none';
-  display.style.outline = '2px solid #4CAF50';
+  display.style.border = '2px solid #4CAF50';
+  display.style.outline = 'none';
   display.style.padding = '4px 8px';
   display.style.fontSize = '13px';
   display.style.fontFamily = 'inherit';

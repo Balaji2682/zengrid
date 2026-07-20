@@ -12,6 +12,7 @@ export interface LifecyclePluginOptions {
   getColumnModel: () => ColumnModel | null;
   getDataAccessor: () => any;
   setColumnModel: (cm: ColumnModel | null) => void;
+  setSelectionChecker?: (checker: ((row: number, col: number) => boolean) | null) => void;
 }
 
 type HeaderSortInteraction = GridEvents['header:sort:click'];
@@ -55,17 +56,20 @@ export function createLifecyclePlugin(opts: LifecyclePluginOptions): GridPlugin 
             // Initialize rendering
             store.exec('rendering:initialize', containerWidth, containerHeight);
 
+            // Size the viewport to the initial pipeline view (e.g. first page)
+            syncAfterPipeline();
+
             // Attach scroll + resize
             const scrollContainer = store.get('dom.scrollContainer') as HTMLElement | null;
             if (scrollContainer) {
-              if (api.getMethod('scroll', 'attach'))
+              if (store.hasAction('scroll:attach'))
                 store.exec('scroll:attach', scrollContainer);
-              if (api.getMethod('resize', 'attach'))
+              if (store.hasAction('resize:attach'))
                 store.exec('resize:attach', scrollContainer, containerWidth, containerHeight);
             }
 
             // Column resize
-            if (options.columnResize) {
+            if (options.enableColumnResize !== false && store.hasAction('column:initResize')) {
               store.exec('column:initResize');
             }
 
@@ -82,13 +86,14 @@ export function createLifecyclePlugin(opts: LifecyclePluginOptions): GridPlugin 
               const headerApi = api.getMethod('header', 'getHeaderCellsContainer');
               const hc: HTMLElement | null = headerApi ? headerApi() : null;
               if (hc) {
-                if (options.columnResize) store.exec('column:attachResize', hc);
+                if (options.enableColumnResize !== false && store.hasAction('column:attachResize'))
+                  store.exec('column:attachResize', hc);
                 if (options.enableColumnDrag !== false) store.exec('column:attachDrag', hc);
               }
             }
 
             // Selection
-            if (api.getMethod('selection', 'attach') && scrollContainer) {
+            if (store.hasAction('selection:attach') && scrollContainer) {
               store.exec('selection:attach', {
                 container: scrollContainer,
                 selectionType: options.selectionType ?? 'cell',
@@ -105,10 +110,7 @@ export function createLifecyclePlugin(opts: LifecyclePluginOptions): GridPlugin 
               eventUnsubs.push(
                 events.on('selection:change', (payload: any) => {
                   state.selection = payload.ranges ?? [];
-                  if (payload.isSelected) {
-                    // Expose selection checker for rendering
-                    api.fireEvent('selection:checkerUpdate', payload.isSelected);
-                  }
+                  opts.setSelectionChecker?.(payload.isSelected ?? null);
                   if (options.onSelectionChange) options.onSelectionChange(state.selection);
                   store.exec('rendering:refreshSelectionClasses');
                   store.exec('lifecycle:updateHeaderCheckbox');
@@ -116,7 +118,7 @@ export function createLifecyclePlugin(opts: LifecyclePluginOptions): GridPlugin 
               );
             }
 
-            // Sort header click bridge
+            // Sort header click handler
             eventUnsubs.push(
               events.on('header:sort:click', (event: HeaderSortInteraction) => {
                 let dataCol = event.columnIndex;
@@ -129,16 +131,16 @@ export function createLifecyclePlugin(opts: LifecyclePluginOptions): GridPlugin 
               })
             );
 
-            // Checkbox header bridge
+            // Checkbox header handler
             eventUnsubs.push(
               events.on('header:checkbox:change', (event: any) => {
-                if (!api.getMethod('selection', 'clear')) return;
+                if (!store.hasAction('selection:clear')) return;
                 if (event.action === 'select-all') store.exec('selection:selectAll', options.rowCount);
                 else store.exec('selection:clear');
               })
             );
 
-            // Viewport resize bridge
+            // Viewport resize handler
             eventUnsubs.push(
               events.on('viewport:resized' as any, () => {
                 store.exec('rendering:updateScroller');
@@ -146,27 +148,37 @@ export function createLifecyclePlugin(opts: LifecyclePluginOptions): GridPlugin 
               })
             );
 
-            // Scroll -> viewport bridge
+            // Scroll viewport handler
             eventUnsubs.push(
               events.on('scroll', (payload: any) => {
-                if (api.getMethod('viewport', 'updateRange') && payload.visibleRange) {
+                if (store.hasAction('viewport:updateRange') && payload.visibleRange) {
                   store.exec('viewport:updateRange', payload.visibleRange);
                 }
               })
             );
 
             // Filter UI
-            if (api.getMethod('filterUI', 'attach')) {
+            if (store.hasAction('filterUI:attach')) {
               store.exec('filterUI:attach', container, events);
             }
 
             // Infinite scroll
-            if (api.getMethod('infiniteScroll', 'setup')) {
+            if (store.hasAction('infiniteScroll:setup')) {
               store.exec('infiniteScroll:setup');
             }
 
             // Editing
             store.exec('editing:setup');
+
+            // Keyboard navigation
+            if (store.hasAction('keyboard:setup')) {
+              store.exec('keyboard:setup');
+            }
+
+            // Clipboard (copy/cut/paste)
+            if (store.hasAction('clipboard:setup')) {
+              store.exec('clipboard:setup');
+            }
 
             rendered = true;
           }
@@ -182,13 +194,13 @@ export function createLifecyclePlugin(opts: LifecyclePluginOptions): GridPlugin 
 
           // Update viewport range
           const renderingApi = api.getMethod('rendering', 'getVisibleRange');
-          if (api.getMethod('viewport', 'updateRange') && renderingApi) {
+          if (store.hasAction('viewport:updateRange') && renderingApi) {
             const initialRange = renderingApi();
             if (initialRange) store.exec('viewport:updateRange', initialRange);
           }
 
           // Update pagination
-          if (api.getMethod('pagination', 'update')) {
+          if (store.hasAction('pagination:update')) {
             store.exec('pagination:update');
           }
 
@@ -200,13 +212,10 @@ export function createLifecyclePlugin(opts: LifecyclePluginOptions): GridPlugin 
         'lifecycle'
       );
 
+      // Delegate to the single shared viewport-sync implementation in the
+      // rendering plugin so sort, pagination, and init stay in lockstep.
       function syncAfterPipeline(): void {
-        const viewIndices = store.get('rows.viewIndices') as number[] | undefined;
-        const visibleCount = viewIndices ? viewIndices.length : options.rowCount;
-        store.exec('rendering:setRowCount', visibleCount);
-        store.exec('rendering:updateCanvasSize');
-        store.exec('rendering:clearCache');
-        store.exec('rendering:refresh');
+        store.exec('rendering:syncAfterPipeline');
       }
 
       store.action(

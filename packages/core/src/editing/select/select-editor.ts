@@ -155,7 +155,13 @@ export class SelectEditor implements CellEditor<any> {
   }
 
   private handleKeyDown(event: KeyboardEvent): void {
-    // Stop propagation to prevent grid navigation
+    // Let Enter/Escape/Tab bubble to the EditorManager so it can
+    // commit/cancel/navigate. Stopping propagation here would swallow them.
+    if (event.key === 'Enter' || event.key === 'Escape' || event.key === 'Tab') {
+      return;
+    }
+
+    // Stop other keys from reaching grid navigation.
     event.stopPropagation();
   }
 }

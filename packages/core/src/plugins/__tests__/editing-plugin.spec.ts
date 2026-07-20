@@ -50,19 +50,20 @@ describe('EditingPlugin', () => {
     expect(store.get('editing.active')).toBeNull();
   });
 
-  it('editing:startEdit sets editing.active and fires event', () => {
+  it('editing:startEdit sets editing.active and drives the manager', () => {
     setupPlugins();
 
+    // Edit lifecycle events are emitted by the EditorManager (via the shared
+    // emitter), not the store action — mirror that here.
     const events: unknown[] = [];
     emitter.on('edit:start', (d: unknown) => events.push(d));
 
+    const cell: CellRef = { row: 0, col: 0 };
     const mockMgr = {
-      startEdit: jest.fn(),
-      getCurrentValue: jest.fn(() => 'test'),
+      startEdit: jest.fn(() => emitter.emit('edit:start', { cell, value: 'test' })),
     };
     store.exec('editing:bind', mockMgr);
 
-    const cell: CellRef = { row: 0, col: 0 };
     store.exec('editing:startEdit', cell);
 
     expect(store.get('editing.active')).toEqual(cell);
@@ -83,7 +84,7 @@ describe('EditingPlugin', () => {
     expect(mockMgr.startEdit).toHaveBeenCalledTimes(1);
   });
 
-  it('editing:commitEdit clears editing.active and fires events', () => {
+  it('editing:commitEdit clears editing.active and drives the manager', () => {
     setupPlugins();
 
     const commitEvents: unknown[] = [];
@@ -91,16 +92,18 @@ describe('EditingPlugin', () => {
     emitter.on('edit:commit', (d: unknown) => commitEvents.push(d));
     emitter.on('edit:end', (d: unknown) => endEvents.push(d));
 
+    const cell: CellRef = { row: 0, col: 0 };
     const mockMgr = {
       startEdit: jest.fn(),
-      commitEdit: jest.fn(),
-      getCurrentValue: jest.fn(() => 'old'),
-      getOriginalValue: jest.fn(() => 'original'),
+      commitEdit: jest.fn(() => {
+        emitter.emit('edit:commit', { cell, oldValue: 'original', newValue: 'new-value' });
+        emitter.emit('edit:end', { cell, value: 'new-value', cancelled: false });
+      }),
     };
     store.exec('editing:bind', mockMgr);
 
-    store.exec('editing:startEdit', { row: 0, col: 0 });
-    store.exec('editing:commitEdit', 'new-value');
+    store.exec('editing:startEdit', cell);
+    store.exec('editing:commitEdit');
 
     expect(store.get('editing.active')).toBeNull();
     expect(mockMgr.commitEdit).toHaveBeenCalled();
@@ -109,7 +112,7 @@ describe('EditingPlugin', () => {
     expect((endEvents[0] as any).cancelled).toBe(false);
   });
 
-  it('editing:cancelEdit clears editing.active and fires events', () => {
+  it('editing:cancelEdit clears editing.active and drives the manager', () => {
     setupPlugins();
 
     const cancelEvents: unknown[] = [];
@@ -117,14 +120,17 @@ describe('EditingPlugin', () => {
     emitter.on('edit:cancel', (d: unknown) => cancelEvents.push(d));
     emitter.on('edit:end', (d: unknown) => endEvents.push(d));
 
+    const cell: CellRef = { row: 0, col: 0 };
     const mockMgr = {
       startEdit: jest.fn(),
-      cancelEdit: jest.fn(),
-      getCurrentValue: jest.fn(),
+      cancelEdit: jest.fn(() => {
+        emitter.emit('edit:cancel', { cell, value: undefined });
+        emitter.emit('edit:end', { cell, value: undefined, cancelled: true });
+      }),
     };
     store.exec('editing:bind', mockMgr);
 
-    store.exec('editing:startEdit', { row: 0, col: 0 });
+    store.exec('editing:startEdit', cell);
     store.exec('editing:cancelEdit');
 
     expect(store.get('editing.active')).toBeNull();

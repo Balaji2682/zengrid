@@ -83,6 +83,9 @@ export class DropdownRenderer implements CellRenderer {
   private navigation: DropdownNavigation;
   private eventManager: DropdownEventManager;
 
+  /** Interactive: attaches listeners and portals its menu to <body>; must not be HTML-cached. */
+  readonly cacheable = false;
+
   constructor(options: DropdownRendererOptions = {}) {
     // Throw if options array is empty or missing
     if (!options.options || options.options.length === 0) {

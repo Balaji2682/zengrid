@@ -1,5 +1,5 @@
 import type { GridPlugin, PluginDisposable } from '../../reactive/types';
-import { GridFilterUI } from '../../grid/filter-ui';
+import { GridFilterUI } from './grid-filter-ui';
 import type { ColumnDef, FilterExpression, FilterModel } from '../../types';
 import type { ColumnModel } from '../../features/columns/column-model';
 

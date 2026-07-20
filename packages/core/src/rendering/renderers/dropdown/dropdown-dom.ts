@@ -17,17 +17,6 @@ export function createDropdownTrigger(displayText: string): HTMLElement {
   arrow.setAttribute('aria-hidden', 'true');
   trigger.appendChild(arrow);
 
-  trigger.style.width = '100%';
-  trigger.style.padding = '6px 8px';
-  trigger.style.border = '1px solid #ccc';
-  trigger.style.borderRadius = '4px';
-  trigger.style.backgroundColor = '#fff';
-  trigger.style.cursor = 'pointer';
-  trigger.style.textAlign = 'left';
-  trigger.style.display = 'flex';
-  trigger.style.justifyContent = 'space-between';
-  trigger.style.alignItems = 'center';
-
   return trigger;
 }
 
@@ -40,13 +29,7 @@ export function createDropdownMenu(maxHeight: number): HTMLElement {
   menu.style.display = 'none';
   menu.style.position = 'absolute';
   menu.style.zIndex = '1000';
-  menu.style.backgroundColor = '#fff';
-  menu.style.border = '1px solid #ccc';
-  menu.style.borderRadius = '4px';
-  menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
   menu.style.maxHeight = `${maxHeight}px`;
-  menu.style.overflowY = 'auto';
-  menu.style.minWidth = '200px';
 
   return menu;
 }
@@ -57,18 +40,12 @@ export function createDropdownMenu(maxHeight: number): HTMLElement {
 export function createSearchInput(): HTMLElement {
   const searchContainer = document.createElement('div');
   searchContainer.className = 'zg-dropdown-search';
-  searchContainer.style.padding = '8px';
-  searchContainer.style.borderBottom = '1px solid #eee';
 
   const searchInput = document.createElement('input');
   searchInput.type = 'text';
   searchInput.className = 'zg-dropdown-search-input';
   searchInput.placeholder = 'Search...';
   searchInput.setAttribute('aria-label', 'Search options');
-  searchInput.style.width = '100%';
-  searchInput.style.padding = '4px 8px';
-  searchInput.style.border = '1px solid #ccc';
-  searchInput.style.borderRadius = '3px';
 
   searchContainer.appendChild(searchInput);
   return searchContainer;
@@ -119,11 +96,6 @@ function createGroupHeader(groupName: string): HTMLElement {
   groupHeader.className = 'zg-dropdown-group-header';
   groupHeader.textContent = groupName;
   groupHeader.setAttribute('role', 'presentation');
-  groupHeader.style.padding = '8px 12px';
-  groupHeader.style.fontSize = '12px';
-  groupHeader.style.fontWeight = 'bold';
-  groupHeader.style.color = '#666';
-  groupHeader.style.backgroundColor = '#f5f5f5';
   return groupHeader;
 }
 
@@ -150,11 +122,6 @@ function createOptionElement(
     optionEl.setAttribute('aria-disabled', 'true');
   }
 
-  optionEl.style.padding = '8px 12px';
-  optionEl.style.cursor = option.disabled ? 'not-allowed' : 'pointer';
-  optionEl.style.backgroundColor = isSelected ? '#e3f2fd' : '#fff';
-  optionEl.style.color = option.disabled ? '#999' : '#333';
-
   return optionEl;
 }
 
@@ -165,9 +132,6 @@ function createNoOptionsElement(): HTMLElement {
   const noOptions = document.createElement('div');
   noOptions.className = 'zg-dropdown-no-options';
   noOptions.textContent = 'No options available';
-  noOptions.style.padding = '12px';
-  noOptions.style.color = '#999';
-  noOptions.style.textAlign = 'center';
   return noOptions;
 }
 

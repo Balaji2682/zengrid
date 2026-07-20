@@ -1,0 +1,90 @@
+/**
+ * Cell renderers — number, image, advanced (icon + text), badge, button and checkbox.
+ */
+
+/* Number renderer */
+.zg-cell-number {
+  /* Right-align under the flex .zg-cell; text-align alone is a no-op on a flex container */
+  justify-content: flex-end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.zg-cell-negative {
+  color: var(--zg-text-negative, #d32f2f);
+}
+
+/* Image renderer */
+.zg-cell-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+}
+
+.zg-cell-image__img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Advanced cell renderer */
+.zg-cell-advanced {
+  overflow: hidden;
+}
+
+.zg-cell-advanced__icon {
+  flex-shrink: 0;
+}
+
+.zg-cell-advanced__text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zg-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75em;
+  font-weight: 500;
+  background: var(--zg-badge-bg, #e0e0e0);
+  color: var(--zg-badge-color, #333);
+}
+
+/* Button Renderer Styles */
+.zg-cell.zg-cell-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zg-button {
+  line-height: 1;
+  text-align: center;
+}
+
+/* Checkbox Renderer Styles */
+.zg-cell.zg-cell-checkbox-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important; /* Override default cell padding */
+}
+
+.zg-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zg-cell-checkbox {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}

@@ -143,10 +143,7 @@ export class Grid {
     this._theme.destroyAutoTheme();
     this.ctx.pluginHost?.destroy?.();
     this.ctx.optionsManager?.destroy?.();
-    this.ctx.container.innerHTML = '';
     this.ctx.container.classList.remove('zg-grid');
-    this.ctx.state.data = [];
-    this.ctx.state.selection = [];
     this.ctx.isDestroyed = true;
   }
 

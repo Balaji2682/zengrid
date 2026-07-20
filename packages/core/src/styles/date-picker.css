@@ -1,0 +1,125 @@
+/**
+ * Date picker renderer — trigger button, text/icon, popup and cell state classes.
+ */
+
+/* Container */
+.zg-date-picker-wrapper {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+}
+
+/* Trigger button */
+.zg-date-picker-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--zg-border-color, #d0d0d0);
+  border-radius: 4px;
+  background: var(--zg-bg-primary, #ffffff);
+  color: var(--zg-text-color, #333333);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.zg-date-picker-trigger:hover:not(:disabled) {
+  border-color: var(--zg-focus-ring, #1976d2);
+}
+
+.zg-date-picker-trigger:focus {
+  outline: none;
+  border-color: var(--zg-focus-ring, #1976d2);
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+/* Editing state - use CSS variable, not hardcoded green */
+.zg-cell-editing .zg-date-picker-trigger {
+  outline: 2px solid var(--zg-border-editing, #4caf50);
+  outline-offset: -1px;
+}
+
+/* Open state */
+.zg-date-picker-open .zg-date-picker-trigger {
+  border-color: var(--zg-focus-ring, #1976d2);
+}
+
+/* Disabled state */
+.zg-date-picker-trigger:disabled,
+.zg-date-picker-disabled {
+  background: var(--zg-hover-bg, #f5f5f5);
+  color: var(--zg-text-color, #999999);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Text display */
+.zg-date-picker-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Empty placeholder */
+.zg-date-picker-empty .zg-date-picker-text {
+  color: var(--zg-text-color, #999999);
+  opacity: 0.6;
+}
+
+/* Calendar icon */
+.zg-date-picker-icon {
+  flex-shrink: 0;
+  margin-left: 8px;
+  color: var(--zg-text-color, #666666);
+  opacity: 0.7;
+}
+
+.zg-date-picker-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+/* Popup container */
+.zg-date-picker-popup {
+  position: fixed;
+  z-index: 10003;
+  background: var(--zg-calendar-bg, #ffffff);
+  border: 1px solid var(--zg-calendar-border, #e0e0e0);
+  border-radius: var(--zg-calendar-radius, 8px);
+  box-shadow: var(--zg-shadow-lg, 0 4px 20px rgba(0, 0, 0, 0.15));
+}
+
+/* Calendar wrapper */
+.zg-date-picker-calendar-wrapper {
+  padding: 4px;
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .zg-date-picker-trigger,
+.zg-theme-dark .zg-date-picker-trigger {
+  background: var(--zg-bg-primary, #1e1e1e);
+  border-color: var(--zg-border-color, #444444);
+  color: var(--zg-text-color, #e0e0e0);
+}
+
+[data-theme="dark"] .zg-date-picker-popup,
+.zg-theme-dark .zg-date-picker-popup {
+  background: var(--zg-calendar-bg, #2d2d2d);
+  border-color: var(--zg-calendar-border, #444444);
+}
+
+/* Cell state classes */
+.zg-cell-date-picker {
+  /* Cell containing date picker */
+}
+
+.zg-date-picker-has-value .zg-date-picker-text {
+  font-weight: 400;
+}

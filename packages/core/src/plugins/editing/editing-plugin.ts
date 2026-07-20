@@ -4,6 +4,7 @@ import type { EventEmitter } from '../../events/event-emitter';
 import type { GridEvents } from '../../events/grid-events';
 import type { ColumnModel } from '../../features/columns/column-model';
 import { EditorManager } from '../../editing/editor-manager';
+import { resolveHeaderHeight } from '../header/header-types';
 
 export interface EditingPluginOptions {
   options?: GridOptions;
@@ -56,24 +57,29 @@ export function createEditingPlugin(pluginOpts?: EditingPluginOptions): GridPlug
             return orderedColumns?.[viewCol]?.dataIndex ?? viewCol;
           };
 
+          const setCellValue = (row: number, col: number, value: any): void => {
+            const dataRow = mapViewRowToDataRow(row);
+            const dataCol = mapViewColToDataCol(col);
+            const rowData = state.data[dataRow];
+            if (Array.isArray(rowData)) {
+              rowData[dataCol] = value;
+            }
+            store.exec('rendering:updateCells', [{ row, col }]);
+          };
+
           if (!editorManager) {
             editorManager = new EditorManager({
               container,
               scrollContainer,
+              events,
+              headerHeight: resolveHeaderHeight(options),
+              invalidEditMode: options.editing?.invalidEditMode,
               getValue: (row, col) => {
                 const dataRow = mapViewRowToDataRow(row);
                 const dataCol = mapViewColToDataCol(col);
                 return getDataAccessor?.()?.getValue(dataRow, dataCol);
               },
-              setValue: (row, col, value) => {
-                const dataRow = mapViewRowToDataRow(row);
-                const dataCol = mapViewColToDataCol(col);
-                const rowData = state.data[dataRow];
-                if (Array.isArray(rowData)) {
-                  rowData[dataCol] = value;
-                }
-                store.exec('rendering:updateCells', [{ row, col }]);
-              },
+              setValue: setCellValue,
               getColumn: (col) => {
                 const dataCol = mapViewColToDataCol(col);
                 return options.columns?.[dataCol];
@@ -94,6 +100,17 @@ export function createEditingPlugin(pluginOpts?: EditingPluginOptions): GridPlug
                 state.editingCell = null;
                 store.set('editing.active', null as any);
                 store.exec('rendering:refreshSelectionClasses');
+              },
+              onCommit: (cell, oldValue, newValue) => {
+                if (!store.hasAction('undoRedo:recordCellEdit')) return;
+                store.exec(
+                  'undoRedo:recordCellEdit',
+                  cell.row,
+                  cell.col,
+                  oldValue,
+                  newValue,
+                  setCellValue
+                );
               },
             });
 
@@ -152,6 +169,10 @@ export function createEditingPlugin(pluginOpts?: EditingPluginOptions): GridPlug
         'editing'
       );
 
+      // Edit lifecycle events (edit:start/commit/cancel/end) are emitted by the
+      // EditorManager itself via the shared `events` emitter, so both interactive
+      // (Enter/Tab/blur) and programmatic commits fire exactly once. These actions
+      // only drive the manager and keep editing.active in sync.
       store.action(
         'editing:startEdit',
         (cell: CellRef) => {
@@ -159,22 +180,17 @@ export function createEditingPlugin(pluginOpts?: EditingPluginOptions): GridPlug
           if (store.get('editing.active')) return;
           editorManager.startEdit(cell);
           store.set('editing.active', cell);
-          api.fireEvent('edit:start', { cell, value: editorManager.getCurrentValue?.() });
         },
         'editing'
       );
 
       store.action(
         'editing:commitEdit',
-        (value?: any) => {
+        () => {
           if (!editorManager) return;
-          const cell = store.get('editing.active') as CellRef | null;
-          if (!cell) return;
-          const oldValue = editorManager.getOriginalValue?.();
+          if (!store.get('editing.active')) return;
           editorManager.commitEdit?.();
           store.set('editing.active', null);
-          api.fireEvent('edit:commit', { cell, oldValue, newValue: value });
-          api.fireEvent('edit:end', { cell, value, cancelled: false });
         },
         'editing'
       );
@@ -183,13 +199,8 @@ export function createEditingPlugin(pluginOpts?: EditingPluginOptions): GridPlug
         'editing:cancelEdit',
         () => {
           if (!editorManager) return;
-          const cell = store.get('editing.active') as CellRef | null;
           editorManager.cancelEdit?.();
           store.set('editing.active', null);
-          if (cell) {
-            api.fireEvent('edit:cancel', { cell, value: undefined });
-            api.fireEvent('edit:end', { cell, value: undefined, cancelled: true });
-          }
         },
         'editing'
       );

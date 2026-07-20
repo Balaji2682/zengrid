@@ -192,13 +192,14 @@ export class NumberEditor implements CellEditor<number> {
   }
 
   private handleKeyDown(event: KeyboardEvent): void {
-    // Stop propagation to prevent grid navigation
-    event.stopPropagation();
-
-    // Allow arrow up/down to increment/decrement
-    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-      event.stopPropagation();
-      // Let default behavior handle increment/decrement
+    // Let Enter/Escape/Tab bubble to the EditorManager so it can
+    // commit/cancel/navigate. Stopping propagation here would swallow them.
+    if (event.key === 'Enter' || event.key === 'Escape' || event.key === 'Tab') {
+      return;
     }
+
+    // Stop other keys (digits, arrows) from reaching grid navigation.
+    // ArrowUp/Down keep their default increment/decrement behavior.
+    event.stopPropagation();
   }
 }

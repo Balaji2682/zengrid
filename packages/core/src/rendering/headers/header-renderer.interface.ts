@@ -105,6 +105,13 @@ export interface HeaderRenderer {
   destroy(element: HTMLElement): void;
 
   /**
+   * Optional: Signals that this renderer wires its own sort-click interaction.
+   * When falsy, the grid attaches a default sort-click handler for sortable
+   * columns so custom renderers stay sortable without extra plumbing.
+   */
+  handlesSortInteraction?: boolean;
+
+  /**
    * Optional: Get CSS class to apply to header cell based on state
    * Useful for conditional styling
    *

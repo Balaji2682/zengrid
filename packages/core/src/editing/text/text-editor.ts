@@ -193,8 +193,8 @@ export class TextEditor implements CellEditor<any> {
     // Inline styles for better UX
     input.style.width = '100%';
     input.style.height = '100%';
-    input.style.border = 'none';
-    input.style.outline = '2px solid #4CAF50';
+    input.style.border = '2px solid #4CAF50';
+    input.style.outline = 'none';
     input.style.padding = '4px 8px';
     input.style.fontSize = '13px';
     input.style.fontFamily = 'inherit';

@@ -3,7 +3,7 @@ import type {
   CellPositionerOptions,
 } from './cell-positioner.interface';
 import type { CellRef, VisibleRange } from '../../types';
-import type { RenderParams } from '../renderers';
+import type { CellRenderer, RenderParams } from '../renderers';
 import { RendererCache } from '../cache';
 import type { ViewportModel } from '../../features/viewport/viewport-model';
 import type { ViewportEvent } from '../../features/viewport/types';
@@ -60,6 +60,10 @@ export class CellPositioner implements ICellPositioner {
 
   private lastRange: VisibleRange | null = null;
   private renderedCells: Map<string, string> = new Map(); // key -> renderer name
+  // The renderer instance actually applied to each pooled element. Keyed by the
+  // element (not the cell key) so destroy() dispatches to the correct renderer
+  // even for instance renderers, whose constructor.name is not in the registry.
+  private appliedRenderer: WeakMap<HTMLElement, CellRenderer> = new WeakMap();
 
   // Height measurement state (single RAF batch)
   private rafPending = false;
@@ -68,6 +72,10 @@ export class CellPositioner implements ICellPositioner {
 
   // Reactive subscription
   private viewportSubscription: (() => void) | null = null;
+
+  // Device-pixel-ratio (browser zoom) change tracking - re-snap edges on zoom
+  private dprQuery: MediaQueryList | null = null;
+  private dprListener: (() => void) | null = null;
 
   constructor(options: CellPositionerOptions) {
     this.scroller = options.scroller;
@@ -81,6 +89,32 @@ export class CellPositioner implements ICellPositioner {
     this.isActive = options.isActive ?? (() => false);
     this.isEditing = options.isEditing ?? (() => false);
     this.rowHeightManager = options.rowHeightManager;
+    this.setupDprListener();
+  }
+
+  /**
+   * Re-render on device-pixel-ratio change (browser zoom) so cell edges re-snap to
+   * whole device pixels. A `resolution` media query fires only when the DPR actually
+   * changes - not on ordinary resize - and is bound to the current DPR, so it is
+   * re-armed after every change.
+   */
+  private setupDprListener(): void {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+    const arm = (): void => {
+      if (this.dprQuery && this.dprListener) {
+        this.dprQuery.removeEventListener('change', this.dprListener);
+      }
+      const dpr = window.devicePixelRatio || 1;
+      this.dprQuery = window.matchMedia(`(resolution: ${dpr}dppx)`);
+      this.dprListener = () => {
+        arm();
+        this.refresh();
+      };
+      this.dprQuery.addEventListener('change', this.dprListener);
+    };
+    arm();
   }
 
   /**
@@ -167,12 +201,32 @@ export class CellPositioner implements ICellPositioner {
       return;
     }
 
-    for (let row = this.lastRange.startRow; row < this.lastRange.endRow; row++) {
-      for (let col = this.lastRange.startCol; col < this.lastRange.endCol; col++) {
+    // The row/col count can shrink after lastRange was recorded (e.g. a backend
+    // response with fewer rows). Clamp to current bounds so a stale out-of-range
+    // index is never positioned (the height/width provider would throw), and
+    // release the cells that fell outside so no ghost rows linger.
+    const endRow = Math.min(this.lastRange.endRow, this.scroller.rowCount);
+    const endCol = Math.min(this.lastRange.endCol, this.scroller.colCount);
+    const startRow = Math.min(this.lastRange.startRow, endRow);
+    const startCol = Math.min(this.lastRange.startCol, endCol);
+
+    const activeKeys = new Set<string>();
+    for (let row = startRow; row < endRow; row++) {
+      for (let col = startCol; col < endCol; col++) {
         const key = this.getCellKey(row, col);
+        activeKeys.add(key);
         this.renderCell(row, col, key);
       }
     }
+
+    this.pool.releaseExcept(activeKeys);
+    for (const key of this.renderedCells.keys()) {
+      if (!activeKeys.has(key)) {
+        this.renderedCells.delete(key);
+      }
+    }
+
+    this.lastRange = { startRow, endRow, startCol, endCol };
   }
 
   /**
@@ -209,6 +263,13 @@ export class CellPositioner implements ICellPositioner {
       this.viewportSubscription = null;
     }
 
+    // Remove device-pixel-ratio (zoom) listener
+    if (this.dprQuery && this.dprListener) {
+      this.dprQuery.removeEventListener('change', this.dprListener);
+      this.dprQuery = null;
+      this.dprListener = null;
+    }
+
     this.pool.clear();
     this.renderedCells.clear();
     this.lastRange = null;
@@ -224,10 +285,23 @@ export class CellPositioner implements ICellPositioner {
     const column = this.getColumn?.(col);
     const rowData = this.getRowData?.(row);
 
+    // Snap each cell EDGE (not its width) to a whole device pixel. The 1px inset
+    // box-shadow that draws a cell border collapses to nothing when the edge lands on
+    // a fractional device row - which is what happens at 100% zoom on fractional-DPR
+    // displays (Windows 125%/150% scaling), causing borders to vanish "randomly".
+    // Because offsets are prefix sums (offset(c) + width(c) === offset(c+1)), snapping
+    // the left/right edges independently keeps neighbours exactly flush: no gaps or
+    // overlaps, and it stays correct through column resizing and row-height changes.
+    const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+    const left = Math.round(position.x * dpr) / dpr;
+    const top = Math.round(position.y * dpr) / dpr;
+    const width = Math.round((position.x + position.width) * dpr) / dpr - left;
+    const height = Math.round((position.y + position.height) * dpr) / dpr - top;
+
     // Position the cell using batched style updates (cssText) to prevent layout thrashing
     // This is critical for scroll performance - individual style.property assignments
     // can trigger multiple style recalculations, while cssText batches them
-    element.style.cssText = `position: absolute; left: ${position.x}px; top: ${position.y}px; width: ${position.width}px; height: ${position.height}px;`;
+    element.style.cssText = `position: absolute; left: ${left}px; top: ${top}px; width: ${width}px; height: ${height}px;`;
 
     // For auto-height columns being measured, allow the cell to expand beyond the set height
     // This is only for the MEASUREMENT phase - after measurement, all cells use the measured height
@@ -236,10 +310,11 @@ export class CellPositioner implements ICellPositioner {
       // Override height constraint for measurement - let content expand
       // The browser will naturally reflow, and we'll measure in the next frame via RAF
       element.style.height = 'auto';
-      element.style.minHeight = `${position.height}px`;
+      element.style.minHeight = `${height}px`;
     }
     element.setAttribute('data-row', row.toString());
     element.setAttribute('data-col', col.toString());
+    element.classList.toggle('zg-cell-last-col', col === this.scroller.colCount - 1);
 
     // Get renderer - handle both string names and renderer instances
     let renderer: any;
@@ -273,8 +348,9 @@ export class CellPositioner implements ICellPositioner {
       isEditing: this.isEditing(row, col),
     };
 
-    // Generate cache key
-    const cacheKey = this.cache
+    // Generate cache key (skip HTML-string caching for interactive renderers,
+    // which lose event listeners / body-portaled DOM when restored via innerHTML)
+    const cacheKey = this.cache && renderer.cacheable !== false
       ? RendererCache.generateKey(row, col, value, rendererName, {
           isSelected: params.isSelected,
           isActive: params.isActive,
@@ -286,6 +362,15 @@ export class CellPositioner implements ICellPositioner {
     if (cacheKey && this.cache) {
       const cached = this.cache.get(cacheKey);
       if (cached) {
+        // Renderer changed for this recycled element: destroy the previous one so
+        // its classes (alignment via zg-cell-text/zg-cell-number, or padding-0
+        // containers like zg-cell-checkbox-container) are stripped before we apply
+        // the cached content's classes additively.
+        const prevRenderer = this.appliedRenderer.get(element);
+        if (prevRenderer && prevRenderer !== renderer) {
+          prevRenderer.destroy(element);
+        }
+
         // Use cached content
         element.innerHTML = cached.html;
 
@@ -294,7 +379,14 @@ export class CellPositioner implements ICellPositioner {
           cached.classes.forEach((cls) => element.classList.add(cls));
         }
 
+        // Re-apply inline styles the renderer set on the cell (the cssText
+        // reset above wiped them, and innerHTML does not carry them).
+        if (cached.styles) {
+          cached.styles.forEach(([prop, val]) => element.style.setProperty(prop, val));
+        }
+
         this.renderedCells.set(key, rendererName);
+        this.appliedRenderer.set(element, renderer);
 
         // Apply state classes
         element.classList.toggle('zg-cell-selected', params.isSelected);
@@ -312,24 +404,33 @@ export class CellPositioner implements ICellPositioner {
       }
     }
 
-    // Render or update (cache miss or no cache)
-    const lastRenderer = this.renderedCells.get(key);
+    // Render or update (cache miss or no cache). The render/update decision is
+    // keyed per cell: the pool wipes an element's innerHTML on release, so a
+    // recycled element must be re-rendered even when the renderer is unchanged.
+    const lastRendererName = this.renderedCells.get(key);
 
-    // Capture classes before render for delta calculation
+    // Capture classes/styles before render for delta calculation.
+    // Style snapshot is only needed when the result will be cached.
     const classesBefore = new Set(Array.from(element.classList));
+    const stylesBefore = cacheKey ? this.snapshotStyles(element) : null;
 
-    if (lastRenderer !== rendererName || !lastRenderer) {
-      // Renderer changed or first render - destroy old and render new
-      if (lastRenderer) {
-        const oldRenderer = this.registry.get(lastRenderer);
-        oldRenderer.destroy(element);
+    const didRender = lastRendererName !== rendererName || !lastRendererName;
+
+    if (didRender) {
+      // Renderer changed or first render - destroy the renderer actually applied
+      // to this element (tracked by instance, so instance renderers dispatch to
+      // the correct destroy) before rendering the new one.
+      const prevRenderer = this.appliedRenderer.get(element);
+      if (prevRenderer && prevRenderer !== renderer) {
+        prevRenderer.destroy(element);
       }
       renderer.render(element, params);
-      this.renderedCells.set(key, rendererName);
     } else {
       // Same renderer - just update
       renderer.update(element, params);
     }
+    this.renderedCells.set(key, rendererName);
+    this.appliedRenderer.set(element, renderer);
 
     // Apply optional renderer class (before caching so it's included)
     if (renderer.getCellClass) {
@@ -339,8 +440,14 @@ export class CellPositioner implements ICellPositioner {
       }
     }
 
-    // Cache the rendered content with all classes added by renderer
-    if (cacheKey && this.cache) {
+    // Cache the rendered content with all classes added by renderer.
+    // Only cache from the render branch: there classesBefore/stylesBefore are a
+    // clean baseline (pool reset + structural classes), so the delta captures
+    // every renderer-owned class/style. In the update branch the element still
+    // holds the renderer's classes from its prior render, so the delta would
+    // omit them (e.g. zg-cell-number) and a later cache-hit on a freshly-pooled
+    // element would drop that styling.
+    if (cacheKey && this.cache && didRender) {
       // Calculate delta: classes added during render
       const addedClasses: string[] = [];
       element.classList.forEach((cls) => {
@@ -349,9 +456,12 @@ export class CellPositioner implements ICellPositioner {
         }
       });
 
+      const addedStyles = stylesBefore ? this.styleDelta(stylesBefore, element) : undefined;
+
       this.cache.set(cacheKey, {
         html: element.innerHTML,
         classes: addedClasses.length > 0 ? addedClasses : undefined,
+        styles: addedStyles,
       });
     }
 
@@ -498,6 +608,41 @@ export class CellPositioner implements ICellPositioner {
     }
     // Add the configured overflow class
     element.classList.add(`zg-cell-overflow-${column.overflow.mode}`);
+  }
+
+  /**
+   * Snapshot the inline style properties currently set on the cell element.
+   * Used to diff against the post-render state so renderer-applied styles can
+   * be cached and restored on cache hits.
+   */
+  private snapshotStyles(element: HTMLElement): Map<string, string> {
+    const style = element.style;
+    const snapshot = new Map<string, string>();
+    for (let i = 0; i < style.length; i++) {
+      const prop = style[i];
+      snapshot.set(prop, style.getPropertyValue(prop));
+    }
+    return snapshot;
+  }
+
+  /**
+   * Compute the inline styles added or changed since {@link snapshotStyles},
+   * i.e. the styles the renderer set on the cell element.
+   */
+  private styleDelta(
+    before: Map<string, string>,
+    element: HTMLElement
+  ): Array<[string, string]> | undefined {
+    const style = element.style;
+    const delta: Array<[string, string]> = [];
+    for (let i = 0; i < style.length; i++) {
+      const prop = style[i];
+      const val = style.getPropertyValue(prop);
+      if (before.get(prop) !== val) {
+        delta.push([prop, val]);
+      }
+    }
+    return delta.length > 0 ? delta : undefined;
   }
 
   private getCellKey(row: number, col: number): string {

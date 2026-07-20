@@ -48,6 +48,13 @@ export interface CachedRenderContent {
   classes?: string[];
 
   /**
+   * Inline styles the renderer set on the cell element, as [property, value]
+   * pairs. innerHTML does not capture styles set on the cell itself, so they
+   * are stored separately and re-applied on cache hits.
+   */
+  styles?: Array<[string, string]>;
+
+  /**
    * Additional metadata
    */
   metadata?: Record<string, any>;

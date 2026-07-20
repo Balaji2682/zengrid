@@ -91,8 +91,16 @@ export class LoadingIndicator {
       this.minDisplayTimeout = null;
     }
 
-    // Remove existing indicator if present
-    this.hide();
+    // Remove the existing indicator immediately. A new load is starting, so we
+    // replace the node now rather than letting hide()'s minDisplayTime defer
+    // removal — deferral would orphan the old node in the DOM (a stuck overlay)
+    // once this.container is reassigned below. Matters when rapid loads fire
+    // interleaved start/end events (e.g. a backend filter firing several
+    // requests in one tick).
+    if (this.container?.parentElement) {
+      this.container.parentElement.removeChild(this.container);
+    }
+    this.container = null;
 
     // Create new indicator
     this.container = this.render(state);

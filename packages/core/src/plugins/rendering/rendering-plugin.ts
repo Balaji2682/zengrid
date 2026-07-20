@@ -99,7 +99,10 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
       }
 
       function mapRowToDataIndex(row: number): number | undefined {
-        const viewIndices = store.get('rows.viewIndices') as number[] | undefined;
+        // getUnphased: rows.viewIndices is a phase-Infinity computed, but rendering
+        // runs at phase 30 (and can be driven synchronously from the phase-30 sync
+        // effect). A phased read here would trip checkPhase and abort the render.
+        const viewIndices = store.getUnphased('rows.viewIndices') as number[] | undefined;
         if (viewIndices) return viewIndices[row];
         return row;
       }
@@ -408,24 +411,45 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
         'rendering'
       );
 
-      // Reactive sync: when viewIndices changes, auto-update row count + canvas + cache + refresh
+      // Single-responsibility viewport sync: resize the virtual scroller +
+      // canvas to the current pipeline view, drop stale cache, and re-render.
+      // This is the one shared implementation — explicit callers (sort,
+      // pagination, init) run it synchronously via the action below; the
+      // effect is a reactive safety net for pipeline changes that don't route
+      // through an explicit call (e.g. filter, programmatic sort/filter).
       let lastViewIndicesRef: number[] | undefined;
+      function syncViewport(): void {
+        if (!scroller) return;
+        const viewIndices = store.getUnphased('rows.viewIndices') as number[] | undefined;
+        lastViewIndicesRef = viewIndices;
+        const visibleCount = viewIndices ? viewIndices.length : options.rowCount;
+        scroller.setRowCount(visibleCount);
+        const canvas = store.get('dom.canvas') as HTMLElement | null;
+        if (canvas) {
+          canvas.style.width = `${scroller.getTotalWidth()}px`;
+          canvas.style.height = `${scroller.getTotalHeight()}px`;
+        }
+        if (cache) cache.clear();
+        // Re-render against the freshly-clamped visible range with fresh data.
+        // refresh() can't be used here: it reuses the previous range (out of
+        // bounds when the page shrinks) and skips cells whose row/col key is
+        // unchanged even though the underlying data changed (page switch).
+        if (positioner) {
+          positioner.clearRenderedCells();
+          positioner.renderVisibleCells(state.scrollPosition.top, state.scrollPosition.left);
+        }
+      }
+
+      store.action('rendering:syncAfterPipeline', syncViewport, 'rendering');
+
       store.effect(
-        'rendering:syncAfterPipeline',
+        'rendering:syncAfterPipeline:auto',
         () => {
-          const viewIndices = store.get('rows.viewIndices') as number[] | undefined;
+          const viewIndices = store.getUnphased('rows.viewIndices') as number[] | undefined;
+          // Explicit callers advance lastViewIndicesRef, so this coalesces to a
+          // no-op on the next frame and avoids a duplicate render.
           if (viewIndices === lastViewIndicesRef) return;
-          lastViewIndicesRef = viewIndices;
-          if (!scroller) return;
-          const visibleCount = viewIndices ? viewIndices.length : options.rowCount;
-          scroller.setRowCount(visibleCount);
-          const canvas = store.get('dom.canvas') as HTMLElement | null;
-          if (canvas) {
-            canvas.style.width = `${scroller.getTotalWidth()}px`;
-            canvas.style.height = `${scroller.getTotalHeight()}px`;
-          }
-          if (cache) cache.clear();
-          if (positioner) positioner.refresh();
+          syncViewport();
         },
         'rendering',
         30
@@ -462,6 +486,7 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
         handleScroll: (top: number, left: number) =>
           store.exec('rendering:handleScroll', top, left),
         updateCanvasSize: () => store.exec('rendering:updateCanvasSize'),
+        syncAfterPipeline: () => store.exec('rendering:syncAfterPipeline'),
         setRowCount: (count: number) => store.exec('rendering:setRowCount', count),
         setColCount: (count: number) => store.exec('rendering:setColCount', count),
         registerRenderer: (name: string, renderer: any) =>

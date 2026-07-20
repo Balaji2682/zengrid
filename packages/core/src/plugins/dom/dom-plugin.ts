@@ -1,5 +1,6 @@
 import type { GridPlugin, PluginDisposable } from '../../reactive/types';
 import type { GridOptions } from '../../types';
+import { resolveHeaderHeight } from '../header/header-types';
 
 export interface DomPluginOptions {
   container: HTMLElement;
@@ -33,6 +34,10 @@ export function createDomPlugin(opts: DomPluginOptions): GridPlugin {
       store.action(
         'dom:setup',
         () => {
+          if (options.hideLastColumnBorder) {
+            container.classList.add('zg-hide-last-col-border');
+          }
+
           // Create viewport
           viewport = document.createElement('div');
           viewport.className = 'zg-viewport';
@@ -48,7 +53,7 @@ export function createDomPlugin(opts: DomPluginOptions): GridPlugin {
           scrollContainer.className = 'zg-scroll-container';
 
           const headerHeight =
-            options.columns && options.columns.length > 0 ? 40 : 0;
+            options.columns && options.columns.length > 0 ? resolveHeaderHeight(options) : 0;
 
           scrollContainer.style.cssText = `
             position: absolute;

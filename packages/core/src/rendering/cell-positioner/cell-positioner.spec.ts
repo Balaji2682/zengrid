@@ -3,6 +3,7 @@ import type { CellPool as ICellPool } from '../cell-pool';
 import { CellPool } from '../cell-pool/cell-pool';
 import { RendererRegistry } from '../renderers';
 import { VirtualScroller } from '../virtual-scroller';
+import { RendererCache } from '../cache';
 
 describe('CellPositioner', () => {
   let container: HTMLElement;
@@ -137,6 +138,43 @@ describe('CellPositioner', () => {
     expect(activeCell.classList.contains('zg-cell-active')).toBe(true);
 
     positionerWithState.destroy();
+  });
+
+  it('should re-apply renderer inline styles on cache hits', () => {
+    // Two rows in the same column share a value, so the second render is a
+    // cache hit (cache key is renderer:col:value, row-independent).
+    for (let row = 0; row < 100; row++) data[row][0] = 'SAME';
+
+    const badgeRenderer = {
+      render(el: HTMLElement) {
+        el.textContent = 'SAME';
+        el.style.color = 'rgb(239, 68, 68)';
+      },
+      update(el: HTMLElement) {
+        el.textContent = 'SAME';
+        el.style.color = 'rgb(239, 68, 68)';
+      },
+      destroy(el: HTMLElement) {
+        el.style.color = '';
+      },
+    };
+
+    const cachedPositioner = new CellPositioner({
+      scroller,
+      pool,
+      registry,
+      cache: new RendererCache(),
+      getData: (row, col) => data[row][col],
+      getColumn: (col) => (col === 0 ? ({ renderer: badgeRenderer } as any) : undefined),
+    });
+
+    cachedPositioner.renderVisibleCells(0, 0);
+
+    // Cell 0-0 renders (cache miss); 1-0 restores from cache (cache hit).
+    expect(pool.acquire('0-0').style.color).toBe('rgb(239, 68, 68)');
+    expect(pool.acquire('1-0').style.color).toBe('rgb(239, 68, 68)');
+
+    cachedPositioner.destroy();
   });
 
   it('should destroy and cleanup', () => {

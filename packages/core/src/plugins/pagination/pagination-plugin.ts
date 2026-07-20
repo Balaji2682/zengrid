@@ -1,6 +1,7 @@
 import type { GridPlugin, PluginDisposable } from '../../reactive/types';
 import type { GridOptions } from '../../types';
 import { Paginator } from '../../features/pagination';
+import { resolveQueryExecutionMode } from '../../grid/query-mode';
 
 export interface PaginationPluginOptions {
   options: GridOptions;
@@ -42,6 +43,30 @@ export function createPaginationPlugin(opts: PaginationPluginOptions): GridPlugi
       store.extend('pagination.currentPage', 0, 'pagination', 80);
       store.extend('pagination.pageSize', options.pagination.pageSize ?? 100, 'pagination', 80);
       store.extend('pagination.totalPages', 0, 'pagination', 80);
+
+      // Frontend pagination: slice the post-sort/filter view down to the
+      // current page so virtual scrolling only renders that page. Backend
+      // pagination is sliced by the data plugin, so no pipeline phase there.
+      const isFrontend = resolveQueryExecutionMode(options.dataMode) !== 'backend';
+      if (isFrontend) {
+        store.computed(
+          'pipeline.pagination',
+          () => {
+            const upstream =
+              (store.getUnphased('pipeline.filter') as number[] | undefined) ??
+              (store.getUnphased('pipeline.sort') as number[] | undefined) ??
+              (store.getUnphased('rows.indices') as number[] | undefined);
+            if (!upstream) return undefined;
+            const pageSize = store.getUnphased('pagination.pageSize') as number;
+            if (!Number.isFinite(pageSize) || pageSize <= 0) return upstream;
+            const currentPage = store.getUnphased('pagination.currentPage') as number;
+            const start = Math.max(0, currentPage) * pageSize;
+            return upstream.slice(start, start + pageSize);
+          },
+          'pagination',
+          30
+        );
+      }
 
       let paginationTop: HTMLElement | null = null;
       let paginationBottom: HTMLElement | null = null;
@@ -120,6 +145,7 @@ export function createPaginationPlugin(opts: PaginationPluginOptions): GridPlugi
           if (currentPage === page) return;
           store.set('pagination.currentPage', page);
           updatePaginationUI();
+          store.exec('rendering:syncAfterPipeline');
           if (options.onPageChange) {
             options.onPageChange(page, store.get('pagination.pageSize') as number);
           }
@@ -178,6 +204,7 @@ export function createPaginationPlugin(opts: PaginationPluginOptions): GridPlugi
           store.set('pagination.pageSize', pageSize);
           store.set('pagination.currentPage', newPage);
           updatePaginationUI();
+          store.exec('rendering:syncAfterPipeline');
 
           if (options.onPageChange) {
             options.onPageChange(

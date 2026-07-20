@@ -19,9 +19,17 @@ export function createContainer(
   label.className = options.className;
   label.style.display = 'flex';
   label.style.alignItems = 'center';
+  label.style.justifyContent = 'center';
   label.style.cursor = options.disabled ? 'not-allowed' : 'pointer';
   label.style.padding = '8px';
   label.style.userSelect = 'none';
+  // Fill the cell with an opaque, outlined surface so the underlying rendered
+  // checkbox (e.g. CheckboxRenderer's centered box) does not show through.
+  label.style.width = '100%';
+  label.style.height = '100%';
+  label.style.boxSizing = 'border-box';
+  label.style.background = '#fff';
+  label.style.border = '2px solid #4CAF50';
 
   // Set data attributes
   label.dataset['row'] = String(params.cell.row);

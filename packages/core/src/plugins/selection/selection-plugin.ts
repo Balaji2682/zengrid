@@ -97,6 +97,16 @@ export function createSelectionPlugin(options?: SelectionPluginOptions): GridPlu
       );
 
       store.action(
+        'selection:toggleCell',
+        (row: number, col: number) => {
+          const selected = mgr.toggleCell(row, col);
+          store.set('selection.active', selected ? { row, col } : null);
+          syncToStore();
+        },
+        'selection'
+      );
+
+      store.action(
         'selection:selectRange',
         (startRow: number, startCol: number, endRow: number, endCol: number, additive = false) => {
           mgr.selectRange(startRow, startCol, endRow, endCol, additive);
@@ -181,6 +191,14 @@ export function createSelectionPlugin(options?: SelectionPluginOptions): GridPlu
 
             store.exec('selection:setActive', { row, col });
 
+            // Triple-click the first column to select the entire row.
+            if (event.detail >= 3 && col === 0) {
+              const additiveRow = (event.ctrlKey || event.metaKey) && !!multiSel;
+              store.exec('selection:selectRows', row, row, additiveRow);
+              anchorCell = { row, col };
+              return;
+            }
+
             const additive = (event.ctrlKey || event.metaKey) && !!multiSel;
 
             if (event.shiftKey && anchorCell) {
@@ -215,7 +233,15 @@ export function createSelectionPlugin(options?: SelectionPluginOptions): GridPlu
                   store.exec('selection:selectRange', row, col, row, col, additive);
                   break;
                 default:
-                  store.exec('selection:selectCell', row, col, additive);
+                  if (additive) {
+                    // Ctrl/Cmd+click toggles the individual cell in a multi-selection
+                    store.exec('selection:toggleCell', row, col);
+                  } else if (mgr.isSelected(row, col)) {
+                    // Plain click on the already-selected cell clears it
+                    store.exec('selection:clear');
+                  } else {
+                    store.exec('selection:selectCell', row, col);
+                  }
               }
               anchorCell = { row, col };
             }
@@ -257,6 +283,7 @@ export function createSelectionPlugin(options?: SelectionPluginOptions): GridPlu
       api.register('selection', {
         selectCell: (row: number, col: number, additive?: boolean) =>
           store.exec('selection:selectCell', row, col, additive),
+        toggleCell: (row: number, col: number) => store.exec('selection:toggleCell', row, col),
         selectRange: (
           startRow: number,
           startCol: number,

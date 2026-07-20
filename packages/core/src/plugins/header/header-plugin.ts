@@ -4,6 +4,7 @@ import type { EventEmitter } from '../../events/event-emitter';
 import type { GridEvents } from '../../events/grid-events';
 import type { HeaderRenderer } from '../../rendering/headers/header-renderer.interface';
 import type { HeaderCellMetadata } from './header-types';
+import { resolveHeaderHeight } from './header-types';
 import { HeaderRendererRegistry } from '../../rendering/headers/header-registry';
 import { registerDefaultRenderers } from './header-registry-setup';
 import {
@@ -33,7 +34,7 @@ export function createHeaderPlugin(opts: HeaderPluginOptions): GridPlugin {
     phase: 70,
     dependencies: ['core', 'dom', 'column'],
     setup(store: GridStore, api: GridApi): PluginDisposable {
-      const { events, getColumnModel } = opts;
+      const { events, getColumnModel, options } = opts;
 
       const registry = new HeaderRendererRegistry();
       const headerCells = new Map<string, HeaderCellMetadata>();
@@ -41,7 +42,7 @@ export function createHeaderPlugin(opts: HeaderPluginOptions): GridPlugin {
       let columnSubscription: (() => void) | null = null;
       const eventUnsubs: Array<() => void> = [];
 
-      const headerHeight = 40;
+      const headerHeight = resolveHeaderHeight(options);
 
       // Register default renderers
       registerDefaultRenderers(registry);
