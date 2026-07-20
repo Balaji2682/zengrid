@@ -193,8 +193,13 @@ export class DropdownState {
         viewportPadding: 8,
       },
       scrollOptions: {
+        // Trigger lives in a virtualized cell. While the cell is on-screen, keep
+        // the menu glued to it (reposition); the moment it scrolls out of the
+        // viewport, close. closeOnOutOfView fires while the element is still in
+        // the viewport, i.e. before the cell is recycled to another row, so the
+        // menu never anchors to the wrong row.
         closeOnOutOfView: true,
-        repositionOnScroll: false,
+        repositionOnScroll: true,
       },
       restoreFocusOnClose: true,
       restoreFocusTo: trigger,

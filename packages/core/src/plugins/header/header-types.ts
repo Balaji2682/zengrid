@@ -2,7 +2,7 @@
  * HeaderManager types and interfaces
  */
 
-import type { SortState, FilterModel } from '../../types';
+import type { SortState, FilterModel, GridOptions } from '../../types';
 import type { EventEmitter } from '../../events/event-emitter';
 import type { GridEvents } from '../../events/grid-events';
 import type { ColumnModel } from '../../features/columns/column-model';
@@ -10,6 +10,18 @@ import type {
   HeaderRenderer,
   HeaderRenderParams,
 } from '../../rendering/headers/header-renderer.interface';
+
+/** Default header row height in pixels when `headerHeight` is not configured. */
+export const DEFAULT_HEADER_HEIGHT = 40;
+
+/**
+ * Resolve the header row height from grid options, falling back to the default.
+ * A non-positive value falls back to the default to avoid a collapsed header.
+ */
+export function resolveHeaderHeight(options: GridOptions): number {
+  const h = options.headerHeight;
+  return typeof h === 'number' && h > 0 ? h : DEFAULT_HEADER_HEIGHT;
+}
 
 /**
  * Configuration for HeaderManager

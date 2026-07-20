@@ -15,6 +15,7 @@ import {
  * Register default header renderers
  */
 export function registerDefaultRenderers(registry: HeaderRendererRegistry): void {
+  registry.setDefaultRenderer(new TextHeaderRenderer());
   registry.register('text', () => new TextHeaderRenderer());
   registry.register('sortable', () => new SortableHeaderRenderer());
   registry.register('filterable', () => new FilterableHeaderRenderer());

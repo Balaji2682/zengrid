@@ -1,0 +1,44 @@
+/**
+ * Floating grid layers — selection overlay, focus ring, loading indicator,
+ * and the screen-reader-only helper.
+ */
+
+/* Selection overlay */
+.zg-selection-overlay {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid var(--zg-selected-border);
+  background: transparent;
+  z-index: 5;
+}
+
+/* Focus ring (separate element for virtual scrolling) */
+.zg-focus-ring {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid var(--zg-focus-ring);
+  box-shadow: inset 0 0 0 1px #ffffff;
+  z-index: 6;
+}
+
+/* Loading indicator */
+.zg-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+}
+
+/* Accessibility - screen reader only */
+.zg-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

@@ -1,7 +1,7 @@
 import { GridStoreImpl } from '../store';
 import { resetTracking } from '../tracking';
 import { resetDebug } from '../debug';
-import { resetScheduler } from '../effect-scheduler';
+import { resetScheduler, flushEffects } from '../effect-scheduler';
 
 let store: GridStoreImpl;
 
@@ -44,6 +44,27 @@ describe('GridStore', () => {
 
       // The computed should recompute with the real value
       expect(store.get('doubled')).toBe(10);
+    });
+
+    it('effect reads missing key, computed created later re-fires effect', () => {
+      const runs: Array<number | undefined> = [];
+      store.effect(
+        'reader',
+        () => {
+          runs.push(store.get('derived') as number | undefined);
+        },
+        'core'
+      );
+
+      // First run subscribed to a phantom placeholder for 'derived'
+      expect(runs).toEqual([undefined]);
+
+      // Creating the computed must activate the phantom so the effect re-subscribes
+      store.extend('base', 3, 'plugin');
+      store.computed('derived', () => (store.get('base') as number) * 2, 'core');
+
+      flushEffects();
+      expect(runs[runs.length - 1]).toBe(6);
     });
   });
 

@@ -57,11 +57,12 @@ function createRenderingPlugin(): GridPlugin {
       store.action('rendering:setRowCount', () => {}, 'rendering');
       store.action('rendering:clearCache', () => {}, 'rendering');
       store.action('rendering:refresh', () => {}, 'rendering');
+      store.action('rendering:syncAfterPipeline', () => {}, 'rendering');
     },
   };
 }
 
-describe('LifecyclePlugin sort bridge', () => {
+describe('LifecyclePlugin sort header handler', () => {
   beforeEach(() => {
     resetTracking();
     resetDebug();
@@ -81,8 +82,6 @@ describe('LifecyclePlugin sort bridge', () => {
       data: [],
       selection: [],
       activeCell: null,
-      sortState: [],
-      filterState: [],
       scrollPosition: { top: 0, left: 0 },
       editingCell: null,
     };

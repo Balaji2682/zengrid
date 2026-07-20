@@ -50,8 +50,12 @@
   --zg-datetime-transition: 150ms ease;
 }
 
-/* Dark theme */
-[data-zg-datetime-theme="dark"] {
+/* Dark theme — also inherit the grid's own dark theme (set on the grid
+   container as data-theme="dark" / .zg-theme-dark by the theme manager) so
+   read-only date cells recolor with the grid, not just the datetime widgets. */
+[data-zg-datetime-theme="dark"],
+[data-theme="dark"],
+.zg-theme-dark {
   --zg-datetime-primary-color: #3b82f6;
   --zg-datetime-primary-hover-color: #60a5fa;
   --zg-datetime-text-color: #f9fafb;
@@ -230,6 +234,58 @@
 
 .zg-datetime-input.error:focus {
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.3);
+}
+
+/* ============================================
+   Cell-editor context: make the date/time editor input fill the cell and
+   use the grid's green editing highlight so it matches the text/number/select
+   editors instead of the datetime suite's default blue rounded box.
+   ============================================ */
+
+.zg-editor-container .zg-datetime-input {
+  height: 100%;
+  border: 2px solid var(--zg-border-editing, #4caf50);
+  border-radius: 0;
+  box-sizing: border-box;
+}
+
+.zg-editor-container .zg-datetime-input:focus {
+  border-color: var(--zg-border-editing, #4caf50);
+  box-shadow: none;
+}
+
+/* Theme the vanilla-calendar-pro chrome to the grid's green/white editor look
+   (it mounts as `.vc` directly inside the popup and ships its own palette). */
+
+/* Selected day -> editor green */
+.zg-datetime-popup .vc-date[data-vc-date-selected] .vc-date__btn {
+  background-color: var(--zg-border-editing, #4caf50);
+  color: #fff;
+}
+
+/* Today -> editor green accent */
+.zg-datetime-popup .vc-date[data-vc-date-today] .vc-date__btn {
+  color: var(--zg-border-editing, #4caf50);
+  font-weight: 600;
+}
+
+/* Drop the library's rose weekend accent so it matches the neutral grid theme */
+.zg-datetime-popup .vc-date[data-vc-date-weekend] .vc-date__btn,
+.zg-datetime-popup .vc-week__day[data-vc-week-day-off] {
+  color: inherit;
+}
+
+/* Hover on a selectable day -> soft green tint */
+.zg-datetime-popup .vc-date:not([data-vc-date-selected]):not([data-vc-date-disabled]) .vc-date__btn:hover {
+  background-color: color-mix(in srgb, var(--zg-border-editing, #4caf50) 15%, transparent);
+  color: var(--zg-border-editing, #4caf50);
+}
+
+/* Header controls (month/year, prev/next arrows) -> green on hover/focus */
+.zg-datetime-popup .vc-arrow:hover,
+.zg-datetime-popup .vc-month:hover,
+.zg-datetime-popup .vc-year:hover {
+  color: var(--zg-border-editing, #4caf50);
 }
 
 /* ============================================

@@ -23,6 +23,9 @@ export interface GridOptions {
   colWidth: number | number[]; // Uniform or variable column widths
   columns?: ColumnDef[];
 
+  /** Header row height in pixels. Defaults to 40. */
+  headerHeight?: number;
+
   /**
    * Theme to apply - a theme ID string (e.g. 'dark', 'material') or a full ZenGridTheme object
    */
@@ -33,6 +36,18 @@ export interface GridOptions {
    * When enabled, uses 'light' theme for light mode and 'dark' theme for dark mode
    */
   autoTheme?: boolean;
+
+  /**
+   * Drop the last column's own right-edge border (header + body cells) so it
+   * doesn't double up against a bordered container into a thin "empty column"
+   * strip. Off by default. (default: false)
+   */
+  hideLastColumnBorder?: boolean;
+
+  /**
+   * Cell editing behavior configuration
+   */
+  editing?: EditingConfig;
 
   enableSelection?: boolean;
   enableMultiSelection?: boolean;
@@ -226,14 +241,34 @@ export interface GridOptions {
 }
 
 /**
+ * How the mode behaves when an edit fails validation.
+ * - 'block': keep the editor open and flag it invalid (red border + tooltip);
+ *   the user must fix the value or press Escape. Never loses input. (default)
+ * - 'revert': discard the invalid input, restore the original value and close
+ *   the editor, so focus can move to another cell.
+ * - 'commit': accept the invalid value, close the editor and mark the cell
+ *   with `.zg-cell-invalid` so the error stays visible in the grid.
+ */
+export type InvalidEditMode = 'block' | 'revert' | 'commit';
+
+/**
+ * Cell editing behavior configuration
+ */
+export interface EditingConfig {
+  /**
+   * What to do when an edit commit fails the editor's validation.
+   * @default 'block'
+   */
+  invalidEditMode?: InvalidEditMode;
+}
+
+/**
  * Grid state
  */
 export interface GridState {
   data: any[][];
   selection: CellRange[];
   activeCell: CellRef | null;
-  sortState: SortState[];
-  filterState: FilterModel[];
   scrollPosition: { top: number; left: number };
   editingCell: CellRef | null;
 }

@@ -21,6 +21,11 @@ export async function initializeCalendars(
   const { minDate, maxDate } = options;
   const dateMinStr = minDate ? formatDateForCalendar(minDate) : '1900-01-01';
   const dateMaxStr = maxDate ? formatDateForCalendar(maxDate) : '2099-12-31';
+  // Follow the editor's theme (default 'light') instead of the library's
+  // 'system' default, which would render dark on a dark OS even when the grid
+  // is on a light theme. themeAttrDetect:false stops the library from
+  // auto-detecting a page attribute and overriding selectedTheme.
+  const selectedTheme = options.theme === 'auto' ? 'system' : options.theme || 'light';
 
   try {
     const { Calendar } = await import('vanilla-calendar-pro');
@@ -29,6 +34,8 @@ export async function initializeCalendars(
       type: 'default',
       selectionDatesMode: 'single',
       enableJumpToSelectedDate: true,
+      selectedTheme,
+      themeAttrDetect: false,
       dateMin: dateMinStr,
       dateMax: dateMaxStr,
       selectedDates: currentValue.start
@@ -61,6 +68,8 @@ export async function initializeCalendars(
       type: 'default',
       selectionDatesMode: 'single',
       enableJumpToSelectedDate: true,
+      selectedTheme,
+      themeAttrDetect: false,
       dateMin: endDateMin,
       dateMax: dateMaxStr,
       selectedDates: currentValue.end

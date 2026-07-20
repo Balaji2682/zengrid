@@ -1,0 +1,86 @@
+/**
+ * Design tokens — CSS custom properties consumed across all ZenGrid styles.
+ */
+:root {
+  /* Grid dimensions */
+  --zg-row-height: 30px;
+  --zg-header-height: 35px;
+  --zg-col-width: 100px;
+
+  /* Colors - Background */
+  --zg-bg-primary: #ffffff;
+  --zg-bg-secondary: #f5f5f5;
+  --zg-bg-hover: #f0f4f8;
+  --zg-bg-selected: #e3f2fd;
+  --zg-bg-active: #ffffff;
+  --zg-bg-editing: #ffffff;
+  --zg-bg-disabled: #fafafa;
+
+  /* Colors - Border */
+  --zg-border-color: #e0e0e0;
+  --zg-border-active: #2196f3;
+  --zg-border-selected: #2196f3;
+  --zg-border-editing: #4caf50;
+  --zg-border-focus: #2196f3;
+
+  /* Colors - Text */
+  --zg-text-primary: #333333;
+  --zg-text-secondary: #666666;
+  --zg-text-disabled: #999999;
+  --zg-text-negative: #d32f2f;
+  --zg-text-link: #1976d2;
+
+  /* Colors - State */
+  --zg-state-success: #4caf50;
+  --zg-state-warning: #ff9800;
+  --zg-state-error: #f44336;
+  --zg-state-info: #2196f3;
+
+  /* Colors - Scrollbar */
+  --zg-scrollbar-thumb: rgba(0, 0, 0, 0.3);
+  --zg-scrollbar-thumb-hover: rgba(0, 0, 0, 0.5);
+
+  /* Spacing */
+  --zg-cell-padding-x: 8px;
+  --zg-cell-padding-y: 0;
+  --zg-header-padding: 12px;
+  --zg-border-width: 1px;
+
+  /* Typography */
+  --zg-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --zg-font-size: 14px;
+  --zg-line-height: 1.5;
+
+  /* Shadows */
+  --zg-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --zg-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --zg-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.15);
+
+  /* Transitions */
+  --zg-transition-fast: 0.1s ease;
+  --zg-transition-normal: 0.2s ease;
+
+  /* Legacy aliases (backwards compat) */
+  --zg-bg-color: var(--zg-bg-primary);
+  --zg-text-color: var(--zg-text-primary);
+  --zg-header-bg: var(--zg-bg-secondary);
+  --zg-header-text: var(--zg-text-primary);
+  --zg-selected-bg: var(--zg-bg-selected);
+  --zg-selected-border: var(--zg-border-selected);
+  --zg-focus-ring: var(--zg-border-focus);
+  --zg-hover-bg: var(--zg-bg-hover);
+  --zg-cell-padding: var(--zg-cell-padding-y) var(--zg-cell-padding-x);
+
+  /* Calendar theming variables */
+  --zg-calendar-bg: var(--zg-bg-primary);
+  --zg-calendar-text: var(--zg-text-primary);
+  --zg-calendar-border: var(--zg-border-color);
+  --zg-calendar-header-bg: var(--zg-bg-secondary);
+  --zg-calendar-selected-bg: var(--zg-bg-selected);
+  --zg-calendar-selected-text: var(--zg-text-primary);
+  --zg-calendar-today-border: var(--zg-border-focus);
+  --zg-calendar-hover-bg: var(--zg-bg-hover);
+  --zg-calendar-disabled-text: var(--zg-text-disabled);
+  --zg-calendar-shadow: var(--zg-shadow-lg);
+  --zg-calendar-radius: 8px;
+}

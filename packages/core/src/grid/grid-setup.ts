@@ -13,6 +13,8 @@ import { createViewportPlugin } from '../plugins/viewport';
 import { createResizePlugin } from '../plugins/resize';
 import { createSelectionPlugin } from '../plugins/selection';
 import { createEditingPlugin } from '../plugins/editing';
+import { createKeyboardPlugin } from '../plugins/keyboard';
+import { createClipboardPlugin } from '../plugins/clipboard';
 import { createUndoRedoPlugin } from '../plugins/undo-redo';
 import { createDomPlugin } from '../plugins/dom';
 import { createRenderingPlugin } from '../plugins/rendering';
@@ -43,8 +45,6 @@ export function createSlimContext(container: HTMLElement, options: GridOptions):
     data: [],
     selection: [],
     activeCell: null,
-    sortState: [],
-    filterState: [],
     scrollPosition: { top: 0, left: 0 },
     editingCell: null,
   };
@@ -56,6 +56,14 @@ export function createSlimContext(container: HTMLElement, options: GridOptions):
   const pipelineRegistry = new PipelineRegistry();
   pipelineRegistry.registerPhase('sort', 10, 'pipeline.sort');
   pipelineRegistry.registerPhase('filter', 20, 'pipeline.filter');
+  // Frontend pagination slices the post-sort/filter view; backend pagination
+  // is handled by the data plugin, so no pipeline phase there.
+  if (
+    normalizedOptions.pagination?.enabled &&
+    resolveQueryExecutionMode(normalizedOptions.dataMode) !== 'backend'
+  ) {
+    pipelineRegistry.registerPhase('pagination', 30, 'pipeline.pagination');
+  }
 
   gridApi.register('options', {
     get: () => optionsManager.getOptions(),
@@ -155,6 +163,27 @@ export function installAllPlugins(ctx: SlimGridContext): void {
     })
   );
 
+  // Phase 46: Keyboard navigation
+  pluginHost.use(
+    createKeyboardPlugin({
+      options,
+      state: ctx.state,
+      container: ctx.container,
+    })
+  );
+
+  // Phase 47: Clipboard (copy/cut/paste)
+  pluginHost.use(
+    createClipboardPlugin({
+      options,
+      state: ctx.state,
+      container: ctx.container,
+      events,
+      getColumnModel: () => columnModel,
+      getDataAccessor: () => dataAccessor,
+    })
+  );
+
   // Phase 50: Scroll, Viewport
   pluginHost.use(createScrollPlugin());
   pluginHost.use(createViewportPlugin());
@@ -200,6 +229,9 @@ export function installAllPlugins(ctx: SlimGridContext): void {
       setColumnModel: (cm: any) => {
         columnModel = cm;
       },
+      setSelectionChecker: (checker: ((row: number, col: number) => boolean) | null) => {
+        selectionChecker = checker;
+      },
     })
   );
 
@@ -213,16 +245,8 @@ export function installAllPlugins(ctx: SlimGridContext): void {
   (ctx as any)._setDataAccessor = (da: any) => {
     dataAccessor = da;
   };
-  (ctx as any)._setSelectionChecker = (sc: any) => {
-    selectionChecker = sc;
-  };
   (ctx as any)._getColumnModel = () => columnModel;
   (ctx as any)._getDataAccessor = () => dataAccessor;
-
-  // Wire selection checker updates from lifecycle plugin
-  events.on('selection:checkerUpdate' as any, (checker: any) => {
-    selectionChecker = checker;
-  });
 
   // Install filter UI if columns + filter are present
   if (

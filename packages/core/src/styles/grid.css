@@ -1,362 +1,166 @@
 /**
- * ZenGrid Core Styles
- * Minimal, themeable CSS for the grid component
+ * Grid shell — container, viewport, virtual scroll surface, cells and cell states.
  */
-
-/* CSS Variables for theming */
-:root {
-  /* Colors - Light Theme */
-  --zg-bg-primary: #ffffff;
-  --zg-bg-secondary: #f5f5f5;
-  --zg-bg-hover: #f0f4f8;
-  --zg-bg-selected: #e3f2fd;
-  --zg-bg-active: #ffffff;
-  --zg-bg-editing: #ffffff;
-
-  --zg-border-color: #e0e0e0;
-  --zg-border-active: #2196f3;
-  --zg-border-editing: #4caf50;
-  --zg-border-selected: #2196f3;
-
-  --zg-text-primary: #333333;
-  --zg-text-secondary: #666666;
-  --zg-text-disabled: #999999;
-
-  /* Focus ring */
-  --zg-focus-ring: 2px solid #2196f3;
-  --zg-focus-offset: 2px;
-
-  /* Spacing */
-  --zg-cell-padding-x: 8px;
-  --zg-cell-padding-y: 0;
-
-  /* Typography */
-  --zg-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  --zg-font-size: 14px;
-  --zg-line-height: 1.5;
-
-  /* Shadows */
-  --zg-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --zg-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
-  --zg-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.15);
-
-  /* Transitions */
-  --zg-transition-fast: 0.1s ease;
-  --zg-transition-normal: 0.2s ease;
-}
-
-/* Dark theme — Slate/Emerald palette (matches zengrid.dev) */
-[data-theme="dark"] {
-  --zg-bg-primary: #0f172a;       /* Slate 900 */
-  --zg-bg-secondary: #1e293b;     /* Slate 800 */
-  --zg-bg-hover: #334155;         /* Slate 700 */
-  --zg-bg-selected: #064e3b;      /* Emerald 900 */
-  --zg-bg-active: #0f172a;        /* Slate 900 */
-  --zg-bg-editing: #0f172a;       /* Slate 900 */
-
-  --zg-border-color: #1e293b;     /* Slate 800 */
-  --zg-border-active: #10b981;    /* Emerald 500 */
-  --zg-border-editing: #34d399;   /* Emerald 400 */
-  --zg-border-selected: #10b981;  /* Emerald 500 */
-
-  --zg-text-primary: #f8fafc;     /* Slate 50 */
-  --zg-text-secondary: #94a3b8;   /* Slate 400 */
-  --zg-text-disabled: #475569;    /* Slate 600 */
-}
 
 /* Grid container */
 .zg-grid {
   position: relative;
   width: 100%;
   height: 100%;
-  background: var(--zg-bg-primary);
+  overflow: hidden;
+  background: var(--zg-bg-color);
   font-family: var(--zg-font-family);
   font-size: var(--zg-font-size);
   line-height: var(--zg-line-height);
-  color: var(--zg-text-primary);
-  overflow: hidden;
-  user-select: none;
-  -webkit-user-select: none;
+  color: var(--zg-text-color);
 }
 
-/* Viewport */
+/* Viewport (scrollable area) */
 .zg-viewport {
   position: relative;
   width: 100%;
   height: 100%;
-  overflow: hidden;
-}
-
-/* Scroll container */
-.zg-scroll-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
   overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+  will-change: scroll-position;
 }
 
-.zg-scroll-container::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+/* Scroll container (defines virtual scroll area) */
+.zg-scroll-container {
+  pointer-events: auto;
 }
 
-.zg-scroll-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.zg-scroll-container::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 6px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.zg-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.5);
-  background-clip: content-box;
-}
-
-/* Canvas (scroll area) */
-.zg-canvas {
-  position: relative;
-  pointer-events: none;
-}
-
-/* Cells container */
+/* Cell container (holds visible cells) */
 .zg-cells {
   position: absolute;
   top: 0;
   left: 0;
   pointer-events: auto;
+  /* Performance optimization: hint browser about transform animations */
+  will-change: transform;
 }
 
-/* Cell base styles */
+/* Individual cell */
 .zg-cell {
   position: absolute;
   box-sizing: border-box;
+  padding: var(--zg-cell-padding);
   /* Use box-shadow instead of border for consistent rendering at fractional devicePixelRatio */
   /* Borders render inconsistently at 125%/150% Windows scaling due to sub-pixel rounding */
   box-shadow:
     inset -1px 0 0 0 var(--zg-border-color),
     inset 0 -1px 0 0 var(--zg-border-color);
-  padding: var(--zg-cell-padding-y) var(--zg-cell-padding-x);
+  background: var(--zg-bg-color);
+  color: var(--zg-text-color);
+  /* Vertically center single-line cell content regardless of row height */
   display: flex;
   align-items: center;
-  background: var(--zg-bg-primary);
-  color: var(--zg-text-primary);
-  overflow: hidden;
   white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
-  transition: background-color var(--zg-transition-fast);
-  cursor: default;
+  user-select: none;
+
+  /* Performance optimization: contain layout/style/paint within cell boundaries */
+  /* This helps browser optimize rendering by isolating cell changes */
+  contain: layout style paint;
 }
 
-/* Cell states */
-.zg-cell:hover {
-  background: var(--zg-bg-hover);
-}
-
-.zg-grid .zg-cell.zg-cell-selected {
-  background: var(--zg-bg-selected);
+.zg-cell[data-col="0"] {
   box-shadow:
-    inset -1px 0 0 0 var(--zg-border-selected),
-    inset 0 -1px 0 0 var(--zg-border-selected);
+    inset 1px 0 0 0 var(--zg-border-color),
+    inset -1px 0 0 0 var(--zg-border-color),
+    inset 0 -1px 0 0 var(--zg-border-color);
 }
 
-.zg-grid .zg-cell.zg-cell-active {
-  box-shadow: inset 0 0 0 2px var(--zg-border-active);
-  background: var(--zg-bg-active);
-  z-index: 2;
+/* hideLastColumnBorder: drop the last column's own right border so it doesn't
+   double up against a bordered container. Selection/active keep their box. */
+.zg-hide-last-col-border .zg-cell-last-col:not(.zg-cell-selected):not(.zg-cell-active) {
+  box-shadow: inset 0 -1px 0 0 var(--zg-border-color);
 }
-
-.zg-grid .zg-cell.zg-cell-editing {
-  background: var(--zg-bg-editing);
-  box-shadow: inset 0 0 0 2px var(--zg-border-editing);
-  z-index: 3;
-}
-
-.zg-cell-readonly {
-  background: var(--zg-bg-secondary);
-  color: var(--zg-text-secondary);
-  cursor: not-allowed;
-}
-
-.zg-cell-disabled {
-  color: var(--zg-text-disabled);
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-/* Cell alignment */
-.zg-cell-align-left {
-  justify-content: flex-start;
-  text-align: left;
-}
-
-.zg-cell-align-center {
-  justify-content: center;
-  text-align: center;
-}
-
-.zg-cell-align-right {
-  justify-content: flex-end;
-  text-align: right;
-}
-
-/* Cell types */
-.zg-cell-number {
-  justify-content: flex-end;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.zg-cell-boolean {
-  justify-content: center;
-}
-
-.zg-cell-date {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Header cells */
-.zg-header-cell {
-  background: var(--zg-bg-secondary);
-  font-weight: 600;
-  border-bottom: 2px solid var(--zg-border-color);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.zg-header-cell:hover {
-  background: var(--zg-bg-hover);
-}
-
-/* Row header */
-.zg-row-header {
-  background: var(--zg-bg-secondary);
-  font-weight: 500;
-  text-align: center;
-  border-right: 2px solid var(--zg-border-color);
-  position: sticky;
-  left: 0;
-  z-index: 9;
-}
-
-/* Focus ring (keyboard navigation) */
-.zg-cell:focus,
-.zg-cell:focus-visible {
-  outline: var(--zg-focus-ring);
-  outline-offset: calc(-1 * var(--zg-focus-offset));
-  z-index: 4;
-}
-
-/* Selection highlight overlay */
-.zg-selection-overlay {
-  position: absolute;
-  pointer-events: none;
-  border: 2px solid var(--zg-border-selected);
-  background: var(--zg-bg-selected);
-  opacity: 0.3;
-  z-index: 1;
-}
-
-/* Loading state */
-.zg-grid.is-loading {
-  cursor: wait;
-  opacity: 0.7;
-}
-
-.zg-grid.is-loading::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 40px;
-  height: 40px;
-  margin: -20px 0 0 -20px;
-  border: 4px solid var(--zg-border-color);
-  border-top-color: var(--zg-border-active);
-  border-radius: 50%;
-  animation: zg-spin 0.8s linear infinite;
-}
-
-@keyframes zg-spin {
-  to { transform: rotate(360deg); }
-}
-
-/* RTL support */
-[dir="rtl"] .zg-grid {
-  direction: rtl;
-}
-
-[dir="rtl"] .zg-cell {
+.zg-hide-last-col-border .zg-cell-last-col[data-col="0"]:not(.zg-cell-selected):not(.zg-cell-active) {
   box-shadow:
     inset 1px 0 0 0 var(--zg-border-color),
     inset 0 -1px 0 0 var(--zg-border-color);
 }
 
-[dir="rtl"] .zg-cell-number {
-  justify-content: flex-start;
-  text-align: left;
+.zg-cell:hover {
+  background: var(--zg-hover-bg);
 }
 
-[dir="rtl"] .zg-row-header {
-  left: auto;
-  right: 0;
-  border-right: none;
-  border-left: 2px solid var(--zg-border-color);
+/* Selected cell - full border box, raised above neighbors so no edge is clipped */
+.zg-cell-selected {
+  background: var(--zg-selected-bg);
+  box-shadow:
+    inset 1px 0 0 0 var(--zg-selected-border),
+    inset -1px 0 0 0 var(--zg-selected-border),
+    inset 0 1px 0 0 var(--zg-selected-border),
+    inset 0 -1px 0 0 var(--zg-selected-border);
+  z-index: 3;
 }
 
-/* Print styles */
-@media print {
-  .zg-scroll-container {
-    overflow: visible !important;
-  }
-
-  .zg-cell {
-    page-break-inside: avoid;
-  }
-
-  .zg-grid {
-    background: white !important;
-  }
+/* Active/focused cell */
+.zg-cell-active {
+  outline: 2px solid var(--zg-focus-ring);
+  outline-offset: -2px;
+  z-index: 2;
 }
 
-/* High contrast mode */
-@media (prefers-contrast: high) {
-  .zg-cell {
-    border-width: 2px;
-  }
-
-  .zg-cell-active,
-  .zg-cell-editing {
-    border-width: 3px;
-  }
+/* Editing cell - inset outline so the overlay editor's own border covers it
+   (matches .zg-cell-active); a non-inset outline showed as a second ring
+   outside the editor border, e.g. the native select editor. */
+.zg-cell-editing {
+  outline: 2px solid var(--zg-focus-ring);
+  outline-offset: -2px;
+  background: var(--zg-bg-color);
+  z-index: 3;
 }
 
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .zg-cell,
-  .zg-grid::after {
-    transition: none !important;
-    animation: none !important;
-  }
-}
-
-/* Accessibility - Screen reader only */
-.zg-sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
+.zg-cell-editing input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
   padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
+  font: inherit;
+  background: transparent;
 }
+
+/* Cell holding a value that failed validation (editing invalidEditMode: 'commit').
+   Uses background + text color (not box-shadow) so it isn't overridden by the
+   higher-specificity cell-border rules above. */
+.zg-cell-invalid {
+  background: color-mix(in srgb, var(--zg-error, #d32f2f) 12%, transparent);
+  color: var(--zg-error, #d32f2f);
+}
+
+/* Inline validation message shown under a blocked editor (invalidEditMode: 'block') */
+.zg-editor-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 2px;
+  padding: 2px 6px;
+  max-width: 240px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #fff;
+  background: var(--zg-error, #d32f2f);
+  border-radius: 3px;
+  white-space: normal;
+  z-index: 10003;
+  pointer-events: none;
+}
+
+/* RTL support */
+.zg-grid[dir='rtl'] {
+  direction: rtl;
+}
+
+.zg-grid[dir='rtl'] .zg-cell {
+  box-shadow:
+    inset 1px 0 0 0 var(--zg-border-color),
+    inset 0 -1px 0 0 var(--zg-border-color);
+}
+
+/* Dark theme - applied via ThemeManager inline CSS variables on container.
+   Legacy .zg-theme-dark class is still set for backwards compat but
+   no CSS overrides are needed here since the theme manager handles it. */

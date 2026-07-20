@@ -18,6 +18,10 @@
   left: 0;
   width: 100%;
   height: 100%;
+  /* Reset the small-box centering transform from the core overlays.css rule:
+     this stylesheet makes .zg-loading a full-size overlay, so the
+     translate(-50%, -50%) would otherwise shove it off the top-left. */
+  transform: none;
   z-index: 1000;
   font-family: var(--zg-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif);
   font-size: var(--zg-font-size, 14px);

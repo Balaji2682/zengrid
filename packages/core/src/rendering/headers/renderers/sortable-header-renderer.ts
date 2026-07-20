@@ -29,6 +29,11 @@ import type { HeaderRenderParams } from '../header-renderer.interface';
  */
 export class SortableHeaderRenderer extends TextHeaderRenderer {
   /**
+   * This renderer wires its own sort-click handler; skip the grid's fallback.
+   */
+  readonly handlesSortInteraction = true;
+
+  /**
    * Default sort icons
    */
   private static readonly DEFAULT_ASC_ICON = '▲';

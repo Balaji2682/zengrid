@@ -67,8 +67,19 @@ export function renderHeaderCell(
   element.dataset['columnId'] = columnId;
   element.dataset['columnIndex'] = String(columnIndex);
 
+  // Reserve the column width before rendering so renderers that don't size the
+  // cell themselves (e.g. custom renderers) don't collapse under the flex row.
+  applyHeaderCellSizing(element, params);
+
   // Render
   renderer.render(element, params);
+
+  // Custom renderers only own render/update/destroy. For sortable columns whose
+  // renderer does not wire sort itself, delegate the sort click so header clicks
+  // still toggle sort (and sort-driven header state keeps updating).
+  if (column.sortable && !renderer.handlesSortInteraction && params.emit) {
+    attachSortClickFallback(element, params);
+  }
 
   // Add to container
   headerCellsContainer.appendChild(element);
@@ -80,6 +91,39 @@ export function renderHeaderCell(
     columnId,
     columnIndex,
     lastParams: params,
+  });
+}
+
+/**
+ * Apply the structural sizing every header cell needs (column width, header
+ * height, no flex shrink, border-box). Renderers may still override these, but
+ * this baseline keeps custom renderers from collapsing to zero width.
+ */
+export function applyHeaderCellSizing(element: HTMLElement, params: HeaderRenderParams): void {
+  element.style.width = `${params.width}px`;
+  element.style.height = `${params.height}px`;
+  element.style.flexShrink = '0';
+  element.style.boxSizing = 'border-box';
+}
+
+/**
+ * Attach a default sort-click handler for sortable columns whose renderer does
+ * not handle the interaction itself. The element is freshly created per render
+ * and discarded on refresh/destroy, so the listener needs no explicit teardown.
+ */
+function attachSortClickFallback(element: HTMLElement, params: HeaderRenderParams): void {
+  element.style.cursor = 'pointer';
+  element.addEventListener('click', (e) => {
+    const native = e as MouseEvent;
+    params.emit?.('header:sort:click', {
+      columnIndex: params.columnIndex,
+      column: params.column,
+      nextDirection:
+        params.sortDirection === 'asc' ? 'desc' : params.sortDirection === 'desc' ? null : 'asc',
+      additive: !!(native.shiftKey || native.ctrlKey || native.metaKey),
+      trigger: 'click',
+      nativeEvent: native,
+    });
   });
 }
 

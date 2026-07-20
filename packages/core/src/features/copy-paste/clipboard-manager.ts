@@ -36,6 +36,18 @@ export interface ClipboardManagerOptions {
    * Callback to get column header
    */
   getColumnHeader?: (col: number) => string;
+
+  /**
+   * Callback to get the total row count. Used to clamp whole-row/column
+   * selections (which use MAX_SAFE_INTEGER sentinels) to real bounds.
+   */
+  getRowCount?: () => number;
+
+  /**
+   * Callback to get the total column count. Used to clamp whole-row/column
+   * selections (which use MAX_SAFE_INTEGER sentinels) to real bounds.
+   */
+  getColumnCount?: () => number;
 }
 
 /**
@@ -70,6 +82,8 @@ export class ClipboardManager {
   private deleteValue?: (row: number, col: number) => void;
   private includeHeaders: boolean;
   private getColumnHeader?: (col: number) => string;
+  private getRowCount?: () => number;
+  private getColumnCount?: () => number;
 
   constructor(options: ClipboardManagerOptions) {
     this.events = options.events;
@@ -78,6 +92,23 @@ export class ClipboardManager {
     this.deleteValue = options.deleteValue;
     this.includeHeaders = options.includeHeaders ?? false;
     this.getColumnHeader = options.getColumnHeader;
+    this.getRowCount = options.getRowCount;
+    this.getColumnCount = options.getColumnCount;
+  }
+
+  /**
+   * Clamp a range's end bounds to the real grid dimensions. Whole-row and
+   * whole-column selections carry MAX_SAFE_INTEGER sentinels; iterating those
+   * literally would freeze the UI and overflow array lengths.
+   */
+  private clampRange(range: CellRange): CellRange {
+    const startRow = Math.max(0, range.startRow);
+    const startCol = Math.max(0, range.startCol);
+    let endRow = range.endRow;
+    let endCol = range.endCol;
+    if (this.getRowCount) endRow = Math.min(endRow, this.getRowCount() - 1);
+    if (this.getColumnCount) endCol = Math.min(endCol, this.getColumnCount() - 1);
+    return { startRow, startCol, endRow, endCol };
   }
 
   /**
@@ -87,11 +118,7 @@ export class ClipboardManager {
   async copy(ranges: CellRange[]): Promise<void> {
     if (ranges.length === 0) return;
 
-    // For simplicity, copy only the first range
-    // TODO: Support multiple ranges
-    const range = ranges[0];
-
-    const data = this.extractRangeData(range);
+    const data = this.extractData(ranges);
     const tsvText = this.toTSV(data);
     const htmlText = this.toHTML(data);
 
@@ -134,7 +161,8 @@ export class ClipboardManager {
     await this.copy(ranges);
 
     // Then delete values
-    for (const range of ranges) {
+    for (const rawRange of ranges) {
+      const range = this.clampRange(rawRange);
       for (let row = range.startRow; row <= range.endRow; row++) {
         for (let col = range.startCol; col <= range.endCol; col++) {
           if (this.deleteValue) {
@@ -199,25 +227,47 @@ export class ClipboardManager {
   }
 
   /**
-   * Extract data from a range
+   * Extract a copyable matrix from one or more ranges. All ranges are projected
+   * onto their combined bounding box; a cell that falls outside every selected
+   * range is emitted empty. A single dense range reduces to that rectangle, so
+   * discontiguous multi-selections copy with their relative layout preserved
+   * (Excel/Sheets behaviour).
    */
-  private extractRangeData(range: CellRange): any[][] {
+  private extractData(rawRanges: CellRange[]): any[][] {
+    const ranges = rawRanges.map((r) => this.clampRange(r));
+
+    let minRow = Infinity;
+    let maxRow = -Infinity;
+    let minCol = Infinity;
+    let maxCol = -Infinity;
+    for (const r of ranges) {
+      if (r.startRow < minRow) minRow = r.startRow;
+      if (r.endRow > maxRow) maxRow = r.endRow;
+      if (r.startCol < minCol) minCol = r.startCol;
+      if (r.endCol > maxCol) maxCol = r.endCol;
+    }
+
+    const inSelection = (row: number, col: number): boolean =>
+      ranges.some(
+        (r) => row >= r.startRow && row <= r.endRow && col >= r.startCol && col <= r.endCol
+      );
+
     const data: any[][] = [];
 
     // Include headers if requested
     if (this.includeHeaders && this.getColumnHeader) {
       const headers: any[] = [];
-      for (let col = range.startCol; col <= range.endCol; col++) {
+      for (let col = minCol; col <= maxCol; col++) {
         headers.push(this.getColumnHeader(col));
       }
       data.push(headers);
     }
 
-    // Extract cell values
-    for (let row = range.startRow; row <= range.endRow; row++) {
+    // Extract cell values across the bounding box
+    for (let row = minRow; row <= maxRow; row++) {
       const rowData: any[] = [];
-      for (let col = range.startCol; col <= range.endCol; col++) {
-        rowData.push(this.getValue(row, col));
+      for (let col = minCol; col <= maxCol; col++) {
+        rowData.push(inSelection(row, col) ? this.getValue(row, col) : null);
       }
       data.push(rowData);
     }

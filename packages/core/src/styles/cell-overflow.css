@@ -1,0 +1,129 @@
+/**
+ * Cell overflow modes (clip / ellipsis / wrap / scroll / expand) and chip cell
+ * overflow behaviour, including scrollbar styling.
+ */
+
+/* Clip mode (default) - already applied in .zg-cell base styles */
+.zg-cell-overflow-clip {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+
+/* Ellipsis mode - already applied in .zg-cell base styles */
+.zg-cell-overflow-ellipsis {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Wrap mode (requires autoHeight for proper row expansion) */
+.zg-cell-overflow-wrap {
+  white-space: normal !important;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow: visible !important;
+}
+
+/* Scroll mode (scrolls within fixed cell height) */
+.zg-cell-overflow-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  white-space: normal;
+  word-wrap: break-word;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  contain: layout style;         /* Remove paint containment so scrollbar can render */
+}
+
+.zg-cell-overflow-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.zg-cell-overflow-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+.zg-cell-overflow-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.zg-cell-overflow-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Expand mode (alias for wrap, requires autoHeight) */
+.zg-cell-overflow-expand {
+  white-space: normal !important;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow: visible !important;
+}
+
+/* Chip cell overrides - allow proper overflow handling */
+.zg-cell-chip {
+  white-space: nowrap;
+  overflow: hidden;          /* Clip chips to cell bounds by default */
+  contain: layout style;     /* Relax paint containment for chip rendering */
+}
+
+/* When chip cell has scroll mode, enable horizontal scrolling */
+.zg-cell-overflow-scroll.zg-cell-chip {
+  overflow-x: auto;              /* Allow horizontal scrolling */
+  overflow-y: hidden;            /* Prevent vertical overflow */
+  display: flex;                 /* Enable flexbox for proper containment */
+  align-items: center;           /* Vertically center chips */
+  white-space: nowrap;           /* Keep chips in single line */
+  scrollbar-width: thin;         /* Thin scrollbar for Firefox */
+  contain: layout style;         /* Remove paint containment so scrollbar can render */
+}
+
+.zg-cell-overflow-scroll.zg-cell-chip::-webkit-scrollbar {
+  height: 6px;                   /* Horizontal scrollbar height */
+}
+
+.zg-cell-overflow-scroll.zg-cell-chip::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.zg-cell-overflow-scroll.zg-cell-chip::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.zg-cell-overflow-scroll.zg-cell-chip::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Chip renderer */
+.zg-chip-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;         /* Constrain to cell width */
+}
+
+/* Chip container overflow modes */
+.zg-chip-container--wrap {
+  flex-wrap: wrap;
+  min-height: 100%;        /* Allow row to expand */
+}
+
+.zg-chip-container--scroll {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-height: 100%;
+  scrollbar-width: none;     /* Firefox */
+}
+
+.zg-chip-container--scroll::-webkit-scrollbar {
+  display: none;             /* Chrome/Safari */
+}
+
+.zg-chip-container--collapse {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}

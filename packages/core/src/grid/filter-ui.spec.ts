@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { GridFilterUI } from './filter-ui';
+import { GridFilterUI } from '../plugins/filter-ui/grid-filter-ui';
 import { EventEmitter } from '../events/event-emitter';
 import type { GridEvents } from '../events/grid-events';
 import type { FilterExpression } from '../types';

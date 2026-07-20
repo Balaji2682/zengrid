@@ -1,0 +1,291 @@
+/**
+ * Calendar theming — vanilla-calendar overrides for the single date picker and
+ * the custom date-range picker, including weekend/holiday cross-browser fixes.
+ */
+
+/* ============================================
+   Date Picker Calendar Overrides
+   ============================================ */
+
+/* Calendar wrapper styling */
+.vanilla-calendar-wrapper,
+.date-range-calendar-wrapper {
+  font-family: var(--zg-font-family, inherit);
+  background: var(--zg-calendar-bg);
+  color: var(--zg-calendar-text);
+  border: 1px solid var(--zg-calendar-border);
+  border-radius: var(--zg-calendar-radius);
+  box-shadow: var(--zg-calendar-shadow);
+}
+
+/* Calendar header */
+.vanilla-calendar__header {
+  background: var(--zg-calendar-header-bg);
+  border-bottom: 1px solid var(--zg-calendar-border);
+}
+
+/* Selected day */
+.vanilla-calendar__day_selected {
+  background: var(--zg-calendar-selected-bg) !important;
+  color: var(--zg-calendar-selected-text) !important;
+}
+
+/* Hover state */
+.vanilla-calendar__day:hover:not(.vanilla-calendar__day_disabled) {
+  background: var(--zg-calendar-hover-bg);
+}
+
+/* Today indicator */
+.vanilla-calendar__day_today {
+  border: 2px solid var(--zg-calendar-today-border);
+}
+
+/* Disabled days */
+.vanilla-calendar__day_disabled {
+  color: var(--zg-calendar-disabled-text);
+}
+
+/* Dark theme adjustments */
+.zg-theme-dark .vanilla-calendar-wrapper,
+.zg-theme-dark .date-range-calendar-wrapper {
+  --zg-calendar-disabled-text: #666666;
+}
+
+/* ============================================
+   Custom Date Range Picker Styles
+   ============================================ */
+
+.zg-date-range-picker {
+  --drp-primary: #4f7df3;
+  --drp-primary-hover: #3b6ce7;
+  --drp-text: #374151;
+  --drp-text-light: #9ca3af;
+  --drp-border: #e5e7eb;
+  --drp-bg: #ffffff;
+  --drp-bg-selected: #4f7df3;
+  --drp-bg-hover: #f3f4f6;
+}
+
+/* Calendar container within date range picker */
+.zg-date-range-picker .zg-custom-calendar {
+  min-width: 280px;
+}
+
+/* Override vanilla-calendar v3 styles (vc- prefix) */
+.zg-date-range-picker .vc-wrapper,
+.zg-date-range-picker .vc {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+}
+
+.zg-date-range-picker .vc-header {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 0 12px 0 !important;
+  margin-bottom: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+/* Month/Year buttons - dropdown style */
+.zg-date-range-picker .vc-header__content {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.zg-date-range-picker .vc-month,
+.zg-date-range-picker .vc-year {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  color: var(--drp-text) !important;
+  background: transparent !important;
+  border: 1px solid var(--drp-border) !important;
+  border-radius: 6px !important;
+  padding: 6px 28px 6px 12px !important;
+  cursor: pointer !important;
+  position: relative !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 8px center !important;
+}
+
+.zg-date-range-picker .vc-month:hover,
+.zg-date-range-picker .vc-year:hover {
+  border-color: var(--drp-text-light) !important;
+}
+
+/* Arrow buttons - smaller and subtle */
+.zg-date-range-picker .vc-arrow {
+  width: 28px !important;
+  height: 28px !important;
+  background: transparent !important;
+  border: 1px solid var(--drp-border) !important;
+  border-radius: 6px !important;
+  color: var(--drp-text-light) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.15s !important;
+  visibility: visible !important; /* Override vanilla-calendar's hidden state */
+}
+
+.zg-date-range-picker .vc-arrow:hover {
+  border-color: var(--drp-text) !important;
+  color: var(--drp-text) !important;
+  background: var(--drp-bg-hover) !important;
+}
+
+/* Week day headers */
+.zg-date-range-picker .vc-week {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 0 !important;
+  margin-bottom: 4px !important;
+}
+
+.zg-date-range-picker .vc-week__day {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--drp-text-light) !important;
+  text-align: center !important;
+  padding: 8px 0 !important;
+  text-transform: uppercase !important;
+}
+
+/* Days grid */
+.zg-date-range-picker .vc-dates {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 2px !important;
+}
+
+/* Individual day button */
+.zg-date-range-picker .vc-date__btn {
+  width: 36px !important;
+  height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  color: var(--drp-text) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: background 0.15s, color 0.15s !important;
+  margin: 0 auto !important;
+}
+
+.zg-date-range-picker .vc-date__btn:hover:not([disabled]):not(.vc-date__btn_selected) {
+  background: var(--drp-bg-hover) !important;
+}
+
+/* Selected day */
+.zg-date-range-picker .vc-date__btn_selected,
+.zg-date-range-picker .vc-date__btn[data-vc-date-selected] {
+  background: var(--drp-bg-selected) !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+}
+
+/* Today indicator */
+.zg-date-range-picker .vc-date__btn_today:not(.vc-date__btn_selected) {
+  border: 1px solid var(--drp-primary) !important;
+  color: var(--drp-primary) !important;
+}
+
+/* Disabled days */
+.zg-date-range-picker .vc-date__btn[disabled],
+.zg-date-range-picker .vc-date__btn_disabled {
+  color: #d1d5db !important;
+  cursor: not-allowed !important;
+}
+
+/* Days from other months */
+.zg-date-range-picker .vc-date__btn_prev,
+.zg-date-range-picker .vc-date__btn_next {
+  color: #d1d5db !important;
+}
+
+/* ============================================
+   Weekend/Holiday Override Styles
+   Fix cross-browser consistency (Windows/Linux Chrome)
+   ============================================ */
+
+/* Weekend day headers (Sat, Sun) - override vanilla-calendar default red styling */
+.zg-date-range-picker .vc-week__day_weekend,
+.zg-date-range-picker .vc-week__day:nth-child(6),
+.zg-date-range-picker .vc-week__day:nth-child(7) {
+  color: var(--drp-text-light) !important; /* Same as regular weekdays */
+}
+
+/* Weekend date buttons - override vanilla-calendar default red styling */
+.zg-date-range-picker .vc-date__btn_weekend {
+  color: var(--drp-text) !important; /* Same as regular days */
+}
+
+/* Weekend dates that are selected */
+.zg-date-range-picker .vc-date__btn_weekend.vc-date__btn_selected,
+.zg-date-range-picker .vc-date__btn_weekend[data-vc-date-selected] {
+  color: #ffffff !important;
+}
+
+/* Weekend dates that are today but not selected */
+.zg-date-range-picker .vc-date__btn_weekend.vc-date__btn_today:not(.vc-date__btn_selected) {
+  color: var(--drp-primary) !important;
+}
+
+/* Weekend dates that are from other months */
+.zg-date-range-picker .vc-date__btn_weekend.vc-date__btn_prev,
+.zg-date-range-picker .vc-date__btn_weekend.vc-date__btn_next {
+  color: #d1d5db !important;
+}
+
+/* Holiday styling override (if any holidays are marked) */
+.zg-date-range-picker .vc-date__btn_holiday {
+  color: var(--drp-text) !important;
+  background: transparent !important;
+}
+
+/* Holiday that is selected */
+.zg-date-range-picker .vc-date__btn_holiday.vc-date__btn_selected {
+  color: #ffffff !important;
+  background: var(--drp-bg-selected) !important;
+}
+
+/* ============================================
+   Vanilla Calendar Wrapper Overrides
+   (for single date picker - VanillaDateEditor)
+   ============================================ */
+
+/* Weekend day headers for single date picker */
+.vanilla-calendar-wrapper .vc-week__day_weekend,
+.vanilla-calendar-wrapper .vc-week__day:nth-child(6),
+.vanilla-calendar-wrapper .vc-week__day:nth-child(7) {
+  color: #9ca3af !important; /* Neutral gray */
+}
+
+/* Weekend date buttons for single date picker */
+.vanilla-calendar-wrapper .vc-date__btn_weekend {
+  color: var(--zg-calendar-text, #374151) !important;
+}
+
+/* Selected weekend date for single date picker */
+.vanilla-calendar-wrapper .vc-date__btn_weekend.vc-date__btn_selected {
+  color: #ffffff !important;
+}
+
+/* Weekend dates from other months */
+.vanilla-calendar-wrapper .vc-date__btn_weekend.vc-date__btn_prev,
+.vanilla-calendar-wrapper .vc-date__btn_weekend.vc-date__btn_next {
+  color: #d1d5db !important;
+}

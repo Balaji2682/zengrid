@@ -16,6 +16,7 @@ import {
   checkPhase,
   getOrCreatePlaceholder,
   activatePhantom,
+  hasPlaceholder,
   registerOwnership,
   getOwnedNames,
   removeOwnership,
@@ -58,6 +59,15 @@ export class GridStoreImpl implements IGridStore {
 
     const wrapped = createComputed(key, fn, owner, phase);
     this.computeds.set(key, wrapped);
+
+    // If something read this key before it existed, it subscribed to a phantom
+    // placeholder. Activate it so those dependents re-run and re-subscribe to
+    // the real computed — otherwise effects that read a computed key early
+    // (e.g. the rendering sync effect reading rows.viewIndices before
+    // setupCoreComputeds) stay bound to a dead placeholder and never fire.
+    if (hasPlaceholder(key)) {
+      activatePhantom(key, wrapped.value);
+    }
   }
 
   effect(name: string, fn: () => void | (() => void), owner: string, phase = 0): void {
@@ -146,6 +156,10 @@ export class GridStoreImpl implements IGridStore {
     }
     this.actions.set(name, { handler, owner, invalidates: meta?.invalidates });
     registerOwnership(owner, name);
+  }
+
+  hasAction(name: string): boolean {
+    return this.actions.has(name);
   }
 
   exec(name: string, ...args: unknown[]): void | { undo: () => void } {

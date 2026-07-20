@@ -10,6 +10,8 @@
  * Supported tokens:
  * - YYYY: 4-digit year
  * - YY: 2-digit year
+ * - MMMM: Full month name (January-December)
+ * - MMM: Short month name (Jan-Dec)
  * - MM: 2-digit month (01-12)
  * - M: Month without leading zero (1-12)
  * - DD: 2-digit day (01-31)
@@ -42,24 +44,45 @@ export function formatDate(date: Date, format: string): string {
 
   const pad = (n: number): string => String(n).padStart(2, '0');
 
-  return format
-    .replace('YYYY', String(year))
-    .replace('YY', String(year).slice(-2))
-    .replace('MM', pad(month))
-    .replace('M', String(month))
-    .replace('DD', pad(day))
-    .replace('D', String(day))
-    .replace('HH', pad(hours))
-    .replace('H', String(hours))
-    .replace('hh', pad(hours12))
-    .replace('h', String(hours12))
-    .replace('mm', pad(minutes))
-    .replace('m', String(minutes))
-    .replace('ss', pad(seconds))
-    .replace('s', String(seconds))
-    .replace('A', ampm)
-    .replace('a', ampm.toLowerCase());
+  // Single-pass tokenizer: alternation is ordered longest-token-first so
+  // multi-char tokens (YYYY/MMMM/MMM/MM) match before their shorter prefixes,
+  // and each token is substituted exactly once — literal text is left intact.
+  const tokens: Record<string, string> = {
+    YYYY: String(year),
+    YY: String(year).slice(-2),
+    MMMM: MONTH_NAMES[month - 1],
+    MMM: MONTH_NAMES_SHORT[month - 1],
+    MM: pad(month),
+    M: String(month),
+    DD: pad(day),
+    D: String(day),
+    HH: pad(hours),
+    H: String(hours),
+    hh: pad(hours12),
+    h: String(hours12),
+    mm: pad(minutes),
+    m: String(minutes),
+    ss: pad(seconds),
+    s: String(seconds),
+    A: ampm,
+    a: ampm.toLowerCase(),
+  };
+
+  return format.replace(
+    /YYYY|YY|MMMM|MMM|MM|M|DD|D|HH|H|hh|h|mm|m|ss|s|A|a/g,
+    (token) => tokens[token]
+  );
 }
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+const MONTH_NAMES_SHORT = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
 
 /**
  * Format a date for display (common formats)

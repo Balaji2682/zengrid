@@ -1,5 +1,5 @@
 import type { CellEditor, EditorParams } from '../cell-editor.interface';
-import type { CellRef } from '../../types';
+import type { CellRef, InvalidEditMode } from '../../types';
 import type { EventEmitter } from '../../events/event-emitter';
 import type { GridEvents } from '../../events/grid-events';
 import { TextEditor } from '../text';
@@ -66,6 +66,16 @@ export interface EditorManagerOptions {
    * Callback when editing ends
    */
   onEditEnd?: (cell: CellRef, cancelled: boolean) => void;
+
+  /**
+   * Callback when an edit is committed with a changed value
+   */
+  onCommit?: (cell: CellRef, oldValue: any, newValue: any) => void;
+
+  /**
+   * Behavior when an edit fails validation (default: 'block')
+   */
+  invalidEditMode?: InvalidEditMode;
 }
 
 /**
@@ -105,6 +115,8 @@ export class EditorManager {
   private getCellElement: (row: number, col: number) => HTMLElement | null;
   private onEditStart?: (cell: CellRef) => void;
   private onEditEnd?: (cell: CellRef, cancelled: boolean) => void;
+  private onCommit?: (cell: CellRef, oldValue: any, newValue: any) => void;
+  private invalidEditMode: InvalidEditMode;
 
   private currentEditor: CellEditor | null = null;
   private editingCell: CellRef | null = null;
@@ -131,6 +143,8 @@ export class EditorManager {
     this.getCellElement = options.getCellElement;
     this.onEditStart = options.onEditStart;
     this.onEditEnd = options.onEditEnd;
+    this.onCommit = options.onCommit;
+    this.invalidEditMode = options.invalidEditMode ?? 'block';
     this.boundHandleEditorKeyDown = this.handleEditorKeyDown.bind(this);
     this.boundHandleClickOutside = this.handleClickOutside.bind(this);
 
@@ -287,9 +301,20 @@ export class EditorManager {
       validation === true ||
       (typeof validation === 'object' && validation.valid);
 
-    if (!isValid) {
-      const message = typeof validation === 'object' ? validation.message : 'Invalid value';
-      alert(message || 'Invalid value');
+    if (!isValid && this.invalidEditMode !== 'commit') {
+      const message =
+        (typeof validation === 'object' && validation.message) || 'Invalid value';
+
+      if (this.invalidEditMode === 'revert') {
+        // Discard the invalid input and restore the original value so focus can
+        // move on. cancelEdit() emits cancel/end and cleans up.
+        this.cancelEdit();
+      } else {
+        // 'block': keep the editor open and flag it invalid (never blocks with a
+        // native alert(), which spammed on every blur and trapped the user).
+        // Escape cancels; fixing the value lets the commit through.
+        this.markInvalid(message);
+      }
       return;
     }
 
@@ -297,8 +322,22 @@ export class EditorManager {
     const newValue = this.currentEditor.getValue();
     const cell = this.editingCell;
 
+    const oldValue = this.originalValue;
+
     // Set value
     this.setValue(cell.row, cell.col, newValue);
+
+    // 'commit' mode: the value failed validation but the caller opted to accept
+    // it. Tag the cell (after the re-render from setValue) so the error stays
+    // visible after the editor closes.
+    if (!isValid) {
+      this.flagInvalidCell(cell);
+    }
+
+    // Record the change for undo/redo (only when the value actually changed)
+    if (this.onCommit && oldValue !== newValue) {
+      this.onCommit(cell, oldValue, newValue);
+    }
 
     // Emit events
     if (this.events) {
@@ -382,6 +421,42 @@ export class EditorManager {
     this.editingCell = null;
     this.originalValue = null;
     this.editorPopups.clear();
+  }
+
+  /**
+   * Flag the current editor as invalid without blocking the UI.
+   * Highlights the input in red and shows a visible inline message below it
+   * (plus a tooltip); the editor stays open so the user can fix the value or
+   * press Escape.
+   */
+  private markInvalid(message: string): void {
+    if (!this.editorContainer) return;
+    const field = this.editorContainer.querySelector(
+      'input, select, textarea'
+    ) as HTMLElement | null;
+    if (field) {
+      field.style.borderColor = '#d32f2f';
+      field.title = message;
+    }
+
+    let hint = this.editorContainer.querySelector(
+      '.zg-editor-error'
+    ) as HTMLElement | null;
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.className = 'zg-editor-error';
+      this.editorContainer.appendChild(hint);
+    }
+    hint.textContent = message;
+  }
+
+  /**
+   * Mark a committed cell as holding an invalid value (used by 'commit' mode).
+   * Adds `.zg-cell-invalid` so the error stays visible after the editor closes.
+   */
+  private flagInvalidCell(cell: CellRef): void {
+    const cellElement = this.getCellElement(cell.row, cell.col);
+    cellElement?.classList.add('zg-cell-invalid');
   }
 
   /**

@@ -1,0 +1,156 @@
+/**
+ * Dropdown renderer.
+ * Visual defaults live here (not inline) so apps can re-skin via these classes
+ * without !important. The menu is portaled to <body>, so its rules use
+ * standalone selectors, not descendants of the wrapper.
+ */
+
+.zg-cell-dropdown {
+  padding: 0;
+}
+
+/* Wrapper (in-grid) */
+.zg-dropdown-wrapper {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+}
+
+/* Trigger button (in-grid) */
+.zg-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--zg-border-color, #d0d0d0);
+  border-radius: 6px;
+  background: var(--zg-bg-primary, #ffffff);
+  color: var(--zg-text-primary, #333333);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.4;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.zg-dropdown-trigger:hover {
+  border-color: var(--zg-focus-ring, #1976d2);
+}
+
+.zg-dropdown-trigger:focus-visible {
+  outline: none;
+  border-color: var(--zg-focus-ring, #1976d2);
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.zg-dropdown-wrapper.open .zg-dropdown-trigger {
+  border-color: var(--zg-focus-ring, #1976d2);
+}
+
+.zg-dropdown-arrow {
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--zg-text-secondary, #666666);
+  transition: transform 0.15s ease;
+}
+
+.zg-dropdown-wrapper.open .zg-dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+/* Menu (portaled to <body>) */
+.zg-dropdown-menu {
+  min-width: 200px;
+  overflow-y: auto;
+  background: var(--zg-bg-primary, #ffffff);
+  color: var(--zg-text-primary, #333333);
+  border: 1px solid var(--zg-border-color, #d0d0d0);
+  border-radius: 8px;
+  box-shadow: var(--zg-shadow-lg, 0 4px 20px rgba(0, 0, 0, 0.15));
+  overscroll-behavior: contain;
+}
+
+/* Search */
+.zg-dropdown-search {
+  padding: 8px;
+  border-bottom: 1px solid var(--zg-border-color, #eeeeee);
+}
+
+.zg-dropdown-search-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--zg-border-color, #d0d0d0);
+  border-radius: 6px;
+  font: inherit;
+  color: inherit;
+  background: var(--zg-bg-primary, #ffffff);
+}
+
+.zg-dropdown-search-input:focus-visible {
+  outline: none;
+  border-color: var(--zg-focus-ring, #1976d2);
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+/* Options */
+.zg-dropdown-options {
+  padding: 4px;
+}
+
+.zg-dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--zg-text-primary, #333333);
+  transition: background-color 0.1s ease;
+}
+
+.zg-dropdown-option:hover,
+.zg-dropdown-option:focus {
+  background: var(--zg-bg-hover, #f0f4f8);
+  outline: none;
+}
+
+.zg-dropdown-option.selected {
+  background: var(--zg-bg-selected, #e3f2fd);
+  font-weight: 600;
+}
+
+.zg-dropdown-option.disabled {
+  color: var(--zg-text-disabled, #999999);
+  cursor: not-allowed;
+}
+
+.zg-dropdown-group-header {
+  padding: 8px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--zg-text-secondary, #666666);
+}
+
+.zg-dropdown-no-options {
+  padding: 12px;
+  text-align: center;
+  color: var(--zg-text-disabled, #999999);
+}
+
+/* Dark theme (in-grid trigger; portaled menu resolves :root vars) */
+[data-theme="dark"] .zg-dropdown-trigger,
+.zg-theme-dark .zg-dropdown-trigger {
+  background: var(--zg-bg-primary, #1e1e1e);
+  border-color: var(--zg-border-color, #444444);
+  color: var(--zg-text-primary, #e0e0e0);
+}

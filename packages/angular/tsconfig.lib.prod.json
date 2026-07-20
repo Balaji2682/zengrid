@@ -1,7 +1,11 @@
 {
   "extends": "./tsconfig.lib.json",
   "compilerOptions": {
-    "declarationMap": false
+    "declarationMap": false,
+    "paths": {
+      "@zengrid/core": ["../core/dist/index.d.ts"],
+      "@zengrid/shared": ["../shared/dist/index.d.ts"]
+    }
   },
   "angularCompilerOptions": {
     "compilationMode": "partial"

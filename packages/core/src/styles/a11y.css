@@ -1,0 +1,20 @@
+/**
+ * Accessibility & user-preference media queries — high contrast and reduced motion.
+ * Placed in the last cascade layer so these preference overrides win.
+ */
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .zg-grid {
+    --zg-border-color: #000000;
+    --zg-selected-border: #000000;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .zg-grid * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

@@ -118,6 +118,7 @@ export interface GridStore {
     meta?: { invalidates?: string[] }
   ): void;
   exec(name: string, ...args: unknown[]): void | { undo: () => void };
+  hasAction(name: string): boolean;
   asyncComputed(
     key: string,
     fn: () => () => Promise<unknown>,

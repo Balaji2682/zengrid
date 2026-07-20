@@ -27,6 +27,11 @@ export class DragMouseHandler {
   // Container reference
   private container: HTMLElement | null = null;
 
+  // Source header cell captured at mousedown. Used to build the drag ghost so it
+  // never depends on the transient mousemove target, which may have moved off the
+  // header (onto a data cell or gap) by the time the drag threshold is crossed.
+  private sourceHeaderCell: HTMLElement | null = null;
+
   constructor(
     options: {
       enabled: boolean;
@@ -67,6 +72,7 @@ export class DragMouseHandler {
       this.container = null;
     }
     this.removeGlobalListeners();
+    this.sourceHeaderCell = null;
   }
 
   /**
@@ -81,6 +87,8 @@ export class DragMouseHandler {
 
     const columnId = headerCell.dataset['columnId'];
     if (!columnId) return;
+
+    this.sourceHeaderCell = headerCell;
 
     // Check if column can be dragged
     if (!this.callbacks.canDragColumn(columnId)) return;
@@ -129,7 +137,7 @@ export class DragMouseHandler {
     if (state === 'pending') {
       const distance = this.callbacks.getDragDistance();
       if (distance >= this.dragThreshold) {
-        this.callbacks.onDragStart(e, e.target as HTMLElement);
+        this.callbacks.onDragStart(e, this.sourceHeaderCell ?? (e.target as HTMLElement));
       }
     }
 
@@ -151,6 +159,7 @@ export class DragMouseHandler {
 
     // Remove global listeners
     this.removeGlobalListeners();
+    this.sourceHeaderCell = null;
   }
 
   /**
