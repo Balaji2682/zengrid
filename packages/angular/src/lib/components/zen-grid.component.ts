@@ -17,7 +17,7 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Grid } from '@zengrid/core';
+import { Zengrid } from '@zengrid/core';
 import type {
   GridOptions,
   GridExportOptions,
@@ -96,7 +96,7 @@ export class ZenGridComponent {
   private readonly gridContainerRef = viewChild<ElementRef<HTMLElement>>('gridContainer');
   private readonly columnChildren = contentChildren(ZenColumnComponent);
 
-  private grid: Grid | null = null;
+  private grid: Zengrid | null = null;
   private gridReady = false;
   private readonly explicitInputs = new Set<'rowHeight' | 'colWidth' | 'columns'>();
   private pendingModelDataSync: any[][] | null = null;
@@ -498,9 +498,13 @@ export class ZenGridComponent {
       rowHeight: this.getResolvedRowHeight(),
       colWidth: this.getResolvedColWidth(),
       ...(componentColumns !== undefined ? { columns: componentColumns } : {}),
+      // This wrapper drives the render lifecycle itself (setData -> usePlugin ->
+      // render), so opt out of the core auto-render-on-setData default to keep
+      // late-installed plugins lifecycle-wired.
+      autoRender: false,
     };
 
-    this.grid = new Grid(container, options);
+    this.grid = new Zengrid(container, options);
 
     // Wire up events
     this.wireEvents();
@@ -629,7 +633,7 @@ export class ZenGridComponent {
 
   // --- Public API Methods ---
 
-  get gridInstance(): Grid | null {
+  get gridInstance(): Zengrid | null {
     return this.grid;
   }
 
@@ -812,6 +816,10 @@ export class ZenGridComponent {
 
   getVisibleRange(): VisibleRange | null {
     return this.grid?.getVisibleRange() ?? null;
+  }
+
+  getScrollElement(): HTMLElement | null {
+    return this.grid?.getScrollElement() ?? null;
   }
 
   // --- Header API ---

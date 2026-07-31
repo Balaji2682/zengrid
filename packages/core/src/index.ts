@@ -165,7 +165,7 @@ export {
 export { createHitTester } from './selection/hit-tester';
 
 // Main Grid class
-export { Grid } from './grid/index';
+export { Zengrid } from './grid/index';
 
 // Grid Events
 export type { GridEvents } from './events/grid-events';
@@ -350,6 +350,7 @@ export { FocusManager } from './a11y';
 export type { FocusManagerOptions } from './a11y';
 export { ClipboardManager } from './features/copy-paste/clipboard-manager';
 export { CSVExporter } from './features/export/csv-exporter';
+export type { ExportSource } from './features/export/export-source';
 
 // Reactive Store (Phase 1)
 export { GridStore, PipelineRegistry } from './reactive';
@@ -375,6 +376,17 @@ export type {
 } from './reactive';
 export { PluginHost } from './grid/plugin-host';
 export { GridApiImpl } from './grid/grid-api';
+
+// Undo/Redo
+export { UndoRedoManager } from './features/undo-redo';
+export type { UndoRedoManagerOptions } from './features/undo-redo';
+export {
+  CellEditCommand,
+  BatchCellEditCommand,
+  FilterChangeCommand,
+  SortChangeCommand,
+  GenericCommand,
+} from './features/undo-redo';
 
 // Plugins
 export { createCorePlugin, createSortPlugin, createFilterPlugin } from './plugins';

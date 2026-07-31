@@ -1,6 +1,6 @@
-import type { Grid } from '@zengrid/core';
+import type { Zengrid } from '@zengrid/core';
 
-export function initPatternDetectionDemo(grid: Grid) {
+export function initPatternDetectionDemo(grid: Zengrid) {
   const patternInput = document.getElementById('pattern-input') as HTMLInputElement;
   const patternLength = document.getElementById('pattern-length') as HTMLInputElement;
   const patternPreviewBtn = document.getElementById('pattern-preview-btn') as HTMLButtonElement;

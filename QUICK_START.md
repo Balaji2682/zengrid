@@ -98,13 +98,13 @@ pnpm clean
 ### 1. Basic Grid
 
 ```typescript
-import { Grid } from '@zengrid/core';
+import { Zengrid } from '@zengrid/core';
 
 // Create container
 const container = document.getElementById('grid');
 
 // Initialize grid
-const grid = new Grid(container, {
+const grid = new Zengrid(container, {
   rowCount: 1000,
   colCount: 10,
   rowHeight: 30,
@@ -123,9 +123,9 @@ grid.render();
 ### 2. With Editing
 
 ```typescript
-import { Grid, EditorManager } from '@zengrid/core';
+import { Zengrid, EditorManager } from '@zengrid/core';
 
-const grid = new Grid(container, {
+const grid = new Zengrid(container, {
   rowCount: 100,
   colCount: 5,
   rowHeight: 30,
@@ -155,9 +155,9 @@ grid.onCellDoubleClick = (cell) => {
 ### 3. With Filtering
 
 ```typescript
-import { Grid, FilterManager } from '@zengrid/core';
+import { Zengrid, FilterManager } from '@zengrid/core';
 
-const grid = new Grid(container, options);
+const grid = new Zengrid(container, options);
 
 const filterManager = new FilterManager({
   colCount: 10,
@@ -176,9 +176,9 @@ const visible = filterManager.getVisibleRows(rowCount);
 ### 4. With Sorting
 
 ```typescript
-import { Grid, SortManager } from '@zengrid/core';
+import { Zengrid, SortManager } from '@zengrid/core';
 
-const grid = new Grid(container, options);
+const grid = new Zengrid(container, options);
 
 const sortManager = new SortManager({
   rowCount: 1000,
@@ -218,9 +218,9 @@ const sortedRow = indexMap.getRowAt(0);
 ## 📱 Mobile Support
 
 ```typescript
-import { Grid, TouchHandler } from '@zengrid/core';
+import { Zengrid, TouchHandler } from '@zengrid/core';
 
-const grid = new Grid(container, options);
+const grid = new Zengrid(container, options);
 
 const touchHandler = new TouchHandler({
   container: grid.container,
@@ -234,9 +234,9 @@ const touchHandler = new TouchHandler({
 ## 🌍 RTL Support
 
 ```typescript
-import { Grid, RTLSupport } from '@zengrid/core';
+import { Zengrid, RTLSupport } from '@zengrid/core';
 
-const grid = new Grid(container, options);
+const grid = new Zengrid(container, options);
 
 const rtl = new RTLSupport({
   container: grid.container,
@@ -247,9 +247,9 @@ const rtl = new RTLSupport({
 ## ♿ Accessibility
 
 ```typescript
-import { Grid, ARIAManager, FocusManager, KeyboardNavigator } from '@zengrid/core';
+import { Zengrid, ARIAManager, FocusManager, KeyboardNavigator } from '@zengrid/core';
 
-const grid = new Grid(container, options);
+const grid = new Zengrid(container, options);
 
 // ARIA support
 const aria = new ARIAManager({
@@ -315,7 +315,7 @@ grid.updateCells(cells);
 ### 3. Virtual Scrolling Config
 
 ```typescript
-const grid = new Grid(container, {
+const grid = new Zengrid(container, {
   // ... other options
   overscanRows: 5,  // Render 5 extra rows above/below viewport
   overscanCols: 2,  // Render 2 extra cols left/right

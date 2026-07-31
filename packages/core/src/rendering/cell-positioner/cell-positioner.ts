@@ -24,6 +24,12 @@ const OVERFLOW_CLASSES = [
 ] as const;
 
 /**
+ * CSS classes for cell horizontal alignment
+ * Used by applyAlignClass helper to avoid duplication
+ */
+const ALIGN_CLASSES = ['zg-cell-align-left', 'zg-cell-align-center', 'zg-cell-align-right'] as const;
+
+/**
  * CellPositioner - Orchestrates cell rendering
  *
  * Coordinates VirtualScroller, CellPool, and RendererRegistry
@@ -395,6 +401,7 @@ export class CellPositioner implements ICellPositioner {
 
         // Apply overflow mode class (from column config) - even for cached content
         this.applyOverflowClass(element, column);
+        this.applyAlignClass(element, column);
 
         // CRITICAL: Measure row height even for cached content
         // Cached content still needs height measurement for auto-height columns
@@ -472,6 +479,7 @@ export class CellPositioner implements ICellPositioner {
 
     // Apply overflow mode class (from column config)
     this.applyOverflowClass(element, column);
+    this.applyAlignClass(element, column);
 
     // Measure row height if needed (after rendering is complete)
     this.measureRowIfNeeded(row, col, element);
@@ -608,6 +616,20 @@ export class CellPositioner implements ICellPositioner {
     }
     // Add the configured overflow class
     element.classList.add(`zg-cell-overflow-${column.overflow.mode}`);
+  }
+
+  /**
+   * Apply the horizontal alignment class from the column definition. Explicit
+   * `align` wins over renderer defaults (e.g. the number renderer's right
+   * alignment) because the `.zg-cell.zg-cell-align-*` selectors are more
+   * specific than the single-class renderer selectors.
+   */
+  private applyAlignClass(element: HTMLElement, column: ColumnDef | undefined): void {
+    element.classList.remove(...ALIGN_CLASSES);
+    if (!column?.align) {
+      return;
+    }
+    element.classList.add(`zg-cell-align-${column.align}`);
   }
 
   /**

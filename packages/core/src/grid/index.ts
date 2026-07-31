@@ -1,4 +1,4 @@
-export { Grid } from './grid-core';
+export { Zengrid } from './grid-core';
 export type { SlimGridContext } from './grid-context';
 export { createSlimContext, installAllPlugins } from './grid-setup';
 export { GridApiImpl } from './grid-api';

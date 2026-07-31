@@ -1,10 +1,10 @@
-import { Grid } from '../grid-core';
+import { Zengrid } from '../grid-core';
 import { resetTracking } from '../../reactive/tracking';
 import { resetDebug } from '../../reactive/debug';
 import { resetScheduler } from '../../reactive/effect-scheduler';
 
 let container: HTMLElement;
-let grid: Grid;
+let grid: Zengrid;
 
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -61,7 +61,7 @@ describe('Grid Backend Data Mode', () => {
       endRow: 2,
     });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 0,
       colCount: 2,
       rowHeight: 30,
@@ -111,7 +111,7 @@ describe('Grid Backend Data Mode', () => {
       onDataRequest,
     };
 
-    grid = new Grid(container, userOptions);
+    grid = new Zengrid(container, userOptions);
 
     grid.render();
     await flushAsyncWork();
@@ -135,7 +135,7 @@ describe('Grid Backend Data Mode', () => {
       endRow: 2,
     });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 0,
       colCount: 2,
       rowHeight: 30,
@@ -162,7 +162,7 @@ describe('Grid Backend Data Mode', () => {
       endRow: 0,
     });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 0,
       colCount: 2,
       rowHeight: 30,
@@ -194,7 +194,7 @@ describe('Grid Backend Data Mode', () => {
         endRow: 1,
       });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 0,
       colCount: 1,
       rowHeight: 30,
@@ -251,7 +251,7 @@ describe('Grid Backend Data Mode', () => {
       })
       .mockImplementationOnce(() => secondRequest.promise);
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 20,
       colCount: 1,
       rowHeight: 30,
@@ -319,7 +319,7 @@ describe('Grid Backend Data Mode', () => {
       })
       .mockImplementationOnce(() => secondRequest.promise);
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 20,
       colCount: 1,
       rowHeight: 30,

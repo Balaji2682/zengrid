@@ -1,5 +1,6 @@
 import type { GridExportOptions, CellRange, ColumnDef } from '../types';
 import { CSVExporter } from '../features/export';
+import type { ExportSource } from '../features/export';
 import type { DataAccessor } from '../data/data-accessor';
 import type { ColumnModel } from '../features/columns/column-model';
 
@@ -9,6 +10,19 @@ export interface GridExportDeps {
   viewIndices: number[] | null;
   columnModel: ColumnModel | null;
   selection: CellRange[];
+}
+
+/**
+ * Build a reusable {@link ExportSource} from the grid's data. Shared by the built-in
+ * delimited exporters and exposed via `grid.export.source()` for other formats.
+ */
+export function buildExportSource(deps: GridExportDeps): ExportSource {
+  return {
+    getValue: (row: number, col: number) => deps.dataAccessor?.getValue(row, col),
+    rowCount: deps.options.rowCount,
+    colCount: deps.options.colCount,
+    getColumnHeader: (col: number) => getColumnHeader(col, deps.options.columns),
+  };
 }
 
 export function exportDelimited(
@@ -21,12 +35,7 @@ export function exportDelimited(
   const rows = resolveExportRows(exportOptions.rows, deps);
   const { columns, headers } = resolveExportColumns(exportOptions.columns, deps);
 
-  const exporter = new CSVExporter({
-    getValue: (row: number, col: number) => deps.dataAccessor!.getValue(row, col),
-    rowCount: deps.options.rowCount,
-    colCount: deps.options.colCount,
-    getColumnHeader: (col: number) => getColumnHeader(col, deps.options.columns),
-  });
+  const exporter = new CSVExporter(buildExportSource(deps));
 
   return exporter.export({
     rows,

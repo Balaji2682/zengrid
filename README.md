@@ -36,7 +36,7 @@ pnpm add @zengrid/core
 ## Quick Start
 
 ```ts
-import { Grid } from '@zengrid/core';
+import { Zengrid } from '@zengrid/core';
 import '@zengrid/core/dist/styles.css';
 
 const container = document.getElementById('grid-container');
@@ -49,7 +49,7 @@ const data = Array.from({ length: rowCount }, (_, row) =>
   Array.from({ length: colCount }, (_, col) => `Cell ${row},${col}`)
 );
 
-const grid = new Grid(container, {
+const grid = new Zengrid(container, {
   rowCount,
   colCount,
   rowHeight: 32,

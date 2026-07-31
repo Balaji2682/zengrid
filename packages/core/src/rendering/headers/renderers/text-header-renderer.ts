@@ -56,13 +56,18 @@ export class TextHeaderRenderer implements HeaderRenderer {
       Object.assign(element.style, params.config.style);
     }
 
+    // Resolve horizontal alignment from the column definition (defaults to left)
+    const align = params.column?.align ?? 'left';
+    const justify =
+      align === 'right' ? 'flex-end' : align === 'center' ? 'center' : 'flex-start';
+
     // Create content wrapper
     const contentWrapper = document.createElement('div');
     contentWrapper.className = 'zg-header-content';
     contentWrapper.style.cssText = `
       display: flex;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: ${justify};
       height: 100%;
       padding: 0 6px;
       gap: 4px;
@@ -86,6 +91,7 @@ export class TextHeaderRenderer implements HeaderRenderer {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      text-align: ${align};
     `;
     contentWrapper.appendChild(textEl);
 

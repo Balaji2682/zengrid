@@ -7,14 +7,14 @@
  * (the "plugin installed but never lifecycle-wired" class). Unit tests miss this
  * because they exec store actions directly and never boot the lifecycle.
  */
-import { Grid } from '../grid-core';
+import { Zengrid } from '../grid-core';
 import { resetTracking } from '../../reactive/tracking';
 import { resetDebug } from '../../reactive/debug';
 import { resetScheduler } from '../../reactive/effect-scheduler';
 import type { GridOptions } from '../../types';
 
 let container: HTMLElement;
-let grid: Grid;
+let grid: Zengrid;
 
 function makeContainer(): HTMLElement {
   const el = document.createElement('div');
@@ -24,8 +24,10 @@ function makeContainer(): HTMLElement {
   return el;
 }
 
-function boot(options: GridOptions, data: unknown[][]): Grid {
-  const g = new Grid(container, options);
+function boot(options: GridOptions, data: unknown[][]): Zengrid {
+  // These tests assert that render() wires each feature's setup action, so they
+  // opt out of the auto-render-on-setData default to keep render() the trigger.
+  const g = new Zengrid(container, { autoRender: false, ...options });
   g.setData(data as any[][]);
   return g;
 }

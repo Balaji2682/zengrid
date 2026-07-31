@@ -22,14 +22,18 @@
 
 .zg-header-cell {
   box-sizing: border-box;
-  padding: var(--zg-header-padding);
+  padding: 0 var(--zg-header-padding);
   border-right: var(--zg-border-width) solid var(--zg-border-color);
   display: flex;
   align-items: center;
   cursor: pointer;
   background: var(--zg-header-bg);
-  color: var(--zg-header-text);
-  font-weight: 600;
+  color: var(--zg-header-color, var(--zg-header-text));
+  font-family: var(--zg-header-font-family, var(--zg-font-family));
+  font-size: var(--zg-header-font-size, var(--zg-font-size));
+  font-weight: var(--zg-header-font-weight, 600);
+  text-transform: var(--zg-header-text-transform, none);
+  letter-spacing: var(--zg-header-letter-spacing, normal);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

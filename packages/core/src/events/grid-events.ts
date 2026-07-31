@@ -86,12 +86,22 @@ export interface GridEvents {
   scroll: {
     scrollTop: number;
     scrollLeft: number;
+    /** Rendered cell range (overscan-inclusive, `endRow`/`endCol` exclusive). */
     visibleRange: {
       startRow: number;
       endRow: number;
       startCol: number;
       endCol: number;
     };
+    /** First rendered row index (inclusive). Equals `visibleRange.startRow`. */
+    firstRow: number;
+    /**
+     * Last rendered row index (inclusive). Equals `visibleRange.endRow - 1`, so
+     * rendered rows = `lastRow - firstRow + 1` with no divide-by-column-count.
+     */
+    lastRow: number;
+    /** Literal count of rendered cell DOM nodes (active pool size). */
+    renderedNodes: number;
   };
 
   'scroll:start': {

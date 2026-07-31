@@ -1,6 +1,6 @@
-import type { Grid } from '@zengrid/core';
+import type { Zengrid } from '@zengrid/core';
 
-export function initDependencyGraphDemo(grid: Grid) {
+export function initDependencyGraphDemo(grid: Zengrid) {
   const formulaSelect = document.getElementById('formula-select') as HTMLSelectElement;
   const addFormulaBtn = document.getElementById('add-formula-btn') as HTMLButtonElement;
   const calculateOrderBtn = document.getElementById('calculate-order-btn') as HTMLButtonElement;

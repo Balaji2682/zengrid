@@ -4,7 +4,7 @@
  * Interactive demonstration of all implemented DS & algorithms
  */
 
-import { Grid } from '@zengrid/core';
+import { Zengrid } from '@zengrid/core';
 import { initTrieDemo } from './demos/trie-demo';
 import { initRTreeDemo } from './demos/rtree-demo';
 import { initDependencyGraphDemo } from './demos/dependency-graph-demo';
@@ -21,7 +21,7 @@ const gridContainer = document.createElement('div');
 gridContainer.style.display = 'none';
 document.body.appendChild(gridContainer);
 
-const grid = new Grid(gridContainer, {
+const grid = new Zengrid(gridContainer, {
   rowCount: 100,
   colCount: 10,
   rowHeight: 30,

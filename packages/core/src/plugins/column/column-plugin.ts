@@ -10,6 +10,23 @@ import { ColumnReorderPlugin } from '../../features/columns/plugins/column-reord
 import { ColumnVisibilityPlugin } from '../../features/columns/plugins/column-visibility';
 import { getHeaderText, resolveHeaderConfig } from '../../rendering/headers/header-config-resolver';
 import { resolveHeaderHeight } from '../header/header-types';
+import type { ColumnDef } from '../../types';
+
+/**
+ * Seed each column's width from the top-level `colWidth` option when the column
+ * definition omits an explicit `width`. Keeps a single source of truth for width
+ * so `colWidth` isn't silently ignored when a `columns` array is present.
+ */
+function seedColumnWidths(
+  columns: ColumnDef[],
+  colWidth: number | number[]
+): ColumnDef[] {
+  return columns.map((def, index) => {
+    if (def.width != null) return def;
+    const seed = Array.isArray(colWidth) ? colWidth[index] : colWidth;
+    return seed != null ? { ...def, width: seed } : def;
+  });
+}
 
 export interface ColumnPluginOptions {
   options: GridOptions;
@@ -47,7 +64,10 @@ export function createColumnPlugin(opts: ColumnPluginOptions): GridPlugin {
         () => {
           if (!options.columns || options.columns.length === 0) return;
 
-          columnModel = new ColumnModel(options.columns);
+          // One source of truth for width: when a column omits `width`, seed it
+          // from the top-level `colWidth` option (uniform number or per-column
+          // array) so the two width sources can't silently disagree.
+          columnModel = new ColumnModel(seedColumnWidths(options.columns, options.colWidth));
           store.set('column.model', columnModel);
 
           // Setup reorder plugin

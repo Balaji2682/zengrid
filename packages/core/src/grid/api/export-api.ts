@@ -1,11 +1,17 @@
 import type { GridExportOptions } from '../../types';
 import type { SlimGridContext } from '../grid-context';
 import type { DataAccessor } from '../../data/data-accessor';
-import { exportDelimited } from '../grid-export';
+import type { ExportSource } from '../../features/export';
+import { buildExportSource, exportDelimited } from '../grid-export';
 
 export interface ExportApi {
   csv(options?: GridExportOptions): string;
   tsv(options?: GridExportOptions): string;
+  /**
+   * A reusable value-accessor view of the grid's data, for building exports in
+   * other formats (e.g. `@zengrid/enterprise`'s Excel/PDF exporters).
+   */
+  source(): ExportSource;
 }
 
 export function createExportApi(ctx: SlimGridContext, getDataAccessor: () => DataAccessor | null): ExportApi {
@@ -28,6 +34,10 @@ export function createExportApi(ctx: SlimGridContext, getDataAccessor: () => Dat
 
     tsv(options: GridExportOptions = {}): string {
       return exportDelimited('\t', options, getExportDeps());
+    },
+
+    source(): ExportSource {
+      return buildExportSource(getExportDeps());
     },
   };
 }

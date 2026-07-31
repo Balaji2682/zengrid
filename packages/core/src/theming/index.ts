@@ -16,6 +16,7 @@ export type {
 
 // Theme Manager
 export { applyTheme, removeTheme, themeToCSSVariables } from './theme-manager';
+export type { ApplyThemeOptions } from './theme-manager';
 
 // Theme Registry
 export {

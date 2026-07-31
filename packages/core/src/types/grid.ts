@@ -11,7 +11,7 @@ import type { FilterModel } from './filter';
 import type { DataLoadRequest, DataLoadResponse } from './data';
 import type { PaginationConfig } from './pagination';
 import type { LoadingConfig } from './loading';
-import type { ZenGridTheme } from '../theming/theme.interface';
+import type { ZenGridTheme, PartialTheme } from '../theming/theme.interface';
 
 /**
  * Grid options
@@ -27,9 +27,29 @@ export interface GridOptions {
   headerHeight?: number;
 
   /**
-   * Theme to apply - a theme ID string (e.g. 'dark', 'material') or a full ZenGridTheme object
+   * Theme to apply. One of:
+   * - a registered theme ID string (e.g. 'dark', 'material')
+   * - a full ZenGridTheme object
+   * - `{ base, override }` to start from a base theme (id or object) and apply
+   *   a deep PartialTheme on top - e.g.
+   *   `{ base: 'light', override: { colors: { text: { primary: '#123' } } } }`
    */
-  theme?: string | ZenGridTheme;
+  theme?: string | ZenGridTheme | { base: string | ZenGridTheme; override: PartialTheme };
+
+  /**
+   * Automatically render the grid on the first `setData()` call (and refresh on
+   * subsequent calls) so `new Zengrid(...)` + `setData(...)` shows data without a
+   * separate `render()`. Set to false for fully manual control. (default: true)
+   */
+  autoRender?: boolean;
+
+  /**
+   * Emit the legacy bare `data-theme="light|dark"` attribute on the container.
+   * The well-namespaced `data-zg-theme` and `.zg-theme-dark` class are always
+   * set; disable this to avoid colliding with host apps that theme off a plain
+   * `[data-theme]` selector. (default: true)
+   */
+  legacyThemeAttribute?: boolean;
 
   /**
    * Automatically switch between light/dark themes based on prefers-color-scheme

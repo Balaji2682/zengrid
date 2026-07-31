@@ -89,9 +89,9 @@ The demo will open at http://localhost:3001
 All demos use the actual Grid class from `@zengrid/core`:
 
 ```typescript
-import { Grid } from '@zengrid/core';
+import { Zengrid } from '@zengrid/core';
 
-const grid = new Grid(container, options);
+const grid = new Zengrid(container, options);
 
 // Access all DS & algorithms via public API
 grid.spatialHitTester      // RTree

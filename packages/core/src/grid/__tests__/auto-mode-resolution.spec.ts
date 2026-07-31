@@ -1,10 +1,10 @@
-import { Grid } from '../grid-core';
+import { Zengrid } from '../grid-core';
 import { resetTracking } from '../../reactive/tracking';
 import { resetDebug } from '../../reactive/debug';
 import { resetScheduler } from '../../reactive/effect-scheduler';
 
 let container: HTMLElement;
-let grid: Grid;
+let grid: Zengrid;
 
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -58,7 +58,7 @@ describe('Grid Auto Mode Resolution', () => {
       endRow: 1,
     });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 1,
       colCount: 2,
       rowHeight: 30,
@@ -75,7 +75,7 @@ describe('Grid Auto Mode Resolution', () => {
   });
 
   it('falls back to frontend data mode when auto mode has no data callback', async () => {
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 2,
       colCount: 1,
       rowHeight: 30,
@@ -92,7 +92,7 @@ describe('Grid Auto Mode Resolution', () => {
   });
 
   it('falls back to frontend sort mode when data mode resolves to frontend', async () => {
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 3,
       colCount: 2,
       rowHeight: 30,
@@ -129,7 +129,7 @@ describe('Grid Auto Mode Resolution', () => {
         endRow: 2,
       });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 2,
       colCount: 2,
       rowHeight: 30,
@@ -169,7 +169,7 @@ describe('Grid Auto Mode Resolution', () => {
         endRow: 2,
       });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 2,
       colCount: 2,
       rowHeight: 30,
@@ -219,7 +219,7 @@ describe('Grid Auto Mode Resolution', () => {
       })
       .mockImplementationOnce(() => secondRequest.promise);
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 20,
       colCount: 1,
       rowHeight: 30,

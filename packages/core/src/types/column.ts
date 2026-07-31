@@ -21,6 +21,12 @@ export interface ColumnDef {
   header: string | HeaderConfig;
   width?: number;
   /**
+   * Horizontal alignment for this column's header and body cells.
+   * Applies to the default renderers; custom renderers may override.
+   * @default 'left'
+   */
+  align?: 'left' | 'center' | 'right';
+  /**
    * Renderer configuration
    * - string: Renderer name registered in RendererRegistry (e.g., 'text', 'checkbox')
    * - CellRenderer: Direct renderer instance for custom behavior

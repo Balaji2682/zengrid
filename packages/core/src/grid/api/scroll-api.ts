@@ -9,6 +9,7 @@ export interface ScrollApi {
   ): { promise: Promise<void>; abort: () => void };
   getPosition(): { top: number; left: number };
   getVisibleRange(): VisibleRange | null;
+  getElement(): HTMLElement | null;
 }
 
 export function createScrollApi(ctx: SlimGridContext): ScrollApi {
@@ -61,6 +62,10 @@ export function createScrollApi(ctx: SlimGridContext): ScrollApi {
     getVisibleRange(): VisibleRange | null {
       const api = ctx.gridApi.getMethod('rendering', 'getVisibleRange');
       return api ? api() : null;
+    },
+
+    getElement(): HTMLElement | null {
+      return (ctx.store.get('dom.scrollContainer') as HTMLElement | null) ?? null;
     },
   };
 }
