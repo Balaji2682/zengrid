@@ -1,7 +1,7 @@
-import type { Grid } from '@zengrid/core';
+import type { Zengrid } from '@zengrid/core';
 import { ALL_PRODUCTS } from './shared-data';
 
-export function initBloomFilterDemo(grid: Grid, trieIndexedFlag: () => boolean) {
+export function initBloomFilterDemo(grid: Zengrid, trieIndexedFlag: () => boolean) {
   const bloomInput = document.getElementById('bloom-input') as HTMLInputElement;
   const bloomCheckBtn = document.getElementById('bloom-check-btn') as HTMLButtonElement;
   const bloomScanBtn = document.getElementById('bloom-scan-btn') as HTMLButtonElement;

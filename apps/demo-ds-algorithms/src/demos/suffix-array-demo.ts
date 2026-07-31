@@ -1,7 +1,7 @@
-import type { Grid } from '@zengrid/core';
+import type { Zengrid } from '@zengrid/core';
 import { ALL_PRODUCTS } from './shared-data';
 
-export function initSuffixArrayDemo(grid: Grid, trieIndexedFlag: () => boolean) {
+export function initSuffixArrayDemo(grid: Zengrid, trieIndexedFlag: () => boolean) {
   const suffixInput = document.getElementById('suffix-input') as HTMLInputElement;
   const suffixSearchBtn = document.getElementById('suffix-search-btn') as HTMLButtonElement;
   const suffixNaiveBtn = document.getElementById('suffix-naive-btn') as HTMLButtonElement;

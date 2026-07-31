@@ -1,10 +1,10 @@
-import { Grid } from '../grid-core';
+import { Zengrid } from '../grid-core';
 import { resetTracking } from '../../reactive/tracking';
 import { resetDebug } from '../../reactive/debug';
 import { resetScheduler } from '../../reactive/effect-scheduler';
 
 let container: HTMLElement;
-let grid: Grid;
+let grid: Zengrid;
 
 const DATA = [
   [30, 'Charlie'],
@@ -20,7 +20,7 @@ beforeEach(() => {
   Object.defineProperty(container, 'clientWidth', { value: 400, configurable: true });
   Object.defineProperty(container, 'clientHeight', { value: 300, configurable: true });
   document.body.appendChild(container);
-  grid = new Grid(container, { rowCount: 3, colCount: 2, rowHeight: 30, colWidth: 100 });
+  grid = new Zengrid(container, { rowCount: 3, colCount: 2, rowHeight: 30, colWidth: 100 });
 });
 
 afterEach(() => {

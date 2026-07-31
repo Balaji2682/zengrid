@@ -8,14 +8,14 @@
  * "controls move but the body never paginates" bug. Unit tests miss it because
  * they never boot a Grid and read the derived view indices.
  */
-import { Grid } from '../grid-core';
+import { Zengrid } from '../grid-core';
 import { resetTracking } from '../../reactive/tracking';
 import { resetDebug } from '../../reactive/debug';
 import { resetScheduler } from '../../reactive/effect-scheduler';
 import type { GridOptions } from '../../types';
 
 let container: HTMLElement;
-let grid: Grid;
+let grid: Zengrid;
 
 function makeContainer(): HTMLElement {
   const el = document.createElement('div');
@@ -33,7 +33,7 @@ const FIVE_ROWS: unknown[][] = [
   [5, 'Erin'],
 ];
 
-function viewIndices(g: Grid): number[] {
+function viewIndices(g: Zengrid): number[] {
   return g.getStore().get('rows.viewIndices') as number[];
 }
 
@@ -50,8 +50,8 @@ afterEach(() => {
 });
 
 describe('pagination liveness: frontend pagination slices the view', () => {
-  function bootPaginated(): Grid {
-    const g = new Grid(container, {
+  function bootPaginated(): Zengrid {
+    const g = new Zengrid(container, {
       rowCount: 5,
       colCount: 2,
       rowHeight: 30,
@@ -90,7 +90,7 @@ describe('pagination liveness: frontend pagination slices the view', () => {
   });
 
   it('does not paginate when pagination is disabled', () => {
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 5,
       colCount: 2,
       rowHeight: 30,

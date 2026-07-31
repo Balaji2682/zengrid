@@ -1,10 +1,10 @@
-import { Grid } from '../grid-core';
+import { Zengrid } from '../grid-core';
 import { resetTracking } from '../../reactive/tracking';
 import { resetDebug } from '../../reactive/debug';
 import { resetScheduler } from '../../reactive/effect-scheduler';
 
 let container: HTMLElement;
-let grid: Grid;
+let grid: Zengrid;
 
 async function flushAsyncWork(): Promise<void> {
   await Promise.resolve();
@@ -41,7 +41,7 @@ describe('Grid Backend Sort Mode', () => {
       endRow: 1,
     });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 1,
       colCount: 2,
       rowHeight: 30,
@@ -83,7 +83,7 @@ describe('Grid Backend Sort Mode', () => {
       endRow: 2,
     });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 4,
       colCount: 2,
       rowHeight: 30,
@@ -137,7 +137,7 @@ describe('Grid Backend Sort Mode', () => {
       { column: 0, direction: 'asc' as const, sortIndex: 0 },
     ];
 
-    const frontendGrid = new Grid(container, {
+    const frontendGrid = new Zengrid(container, {
       rowCount: 4,
       colCount: 2,
       rowHeight: 30,
@@ -166,7 +166,7 @@ describe('Grid Backend Sort Mode', () => {
       endRow: data.length,
     });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: data.length,
       colCount: 2,
       rowHeight: 30,

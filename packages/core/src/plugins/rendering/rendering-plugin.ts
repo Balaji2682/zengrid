@@ -349,7 +349,14 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
             endCol: 0,
           };
 
-          events.emit('scroll' as any, { scrollTop, scrollLeft, visibleRange });
+          events.emit('scroll' as any, {
+            scrollTop,
+            scrollLeft,
+            visibleRange,
+            firstRow: visibleRange.startRow,
+            lastRow: visibleRange.endRow - 1,
+            renderedNodes: pool?.stats.active ?? 0,
+          });
 
           const isFastScroll =
             scrollVelocity.vertical > FAST_SCROLL_VELOCITY_THRESHOLD ||

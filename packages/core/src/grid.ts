@@ -6,4 +6,4 @@
  *
  * This file is maintained for backwards compatibility with existing code.
  */
-export { Grid } from './grid/index';
+export { Zengrid } from './grid/index';

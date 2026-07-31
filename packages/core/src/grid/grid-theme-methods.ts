@@ -26,6 +26,8 @@ export function createThemeMethods(ctx: SlimGridContext): ThemeMethods {
   let mediaQuery: MediaQueryList | null = null;
   let mediaHandler: ((e: MediaQueryListEvent) => void) | null = null;
 
+  const applyOptions = { legacyThemeAttribute: ctx.options.legacyThemeAttribute !== false };
+
   function resolveTheme(nameOrObject: string | ZenGridTheme): ZenGridTheme {
     if (typeof nameOrObject === 'string') {
       const theme = getTheme(nameOrObject);
@@ -38,7 +40,7 @@ export function createThemeMethods(ctx: SlimGridContext): ThemeMethods {
   const methods: ThemeMethods = {
     setTheme(nameOrObject: string | ZenGridTheme): void {
       currentTheme = resolveTheme(nameOrObject);
-      applyTheme(ctx.container, currentTheme);
+      applyTheme(ctx.container, currentTheme, applyOptions);
     },
 
     getTheme(): ZenGridTheme {
@@ -50,17 +52,14 @@ export function createThemeMethods(ctx: SlimGridContext): ThemeMethods {
     },
 
     updateTheme(partial: PartialTheme): void {
-      // Deep merge partial into current theme
-      const merged = JSON.parse(JSON.stringify(currentTheme));
-      deepMergeInto(merged, partial as any);
-      currentTheme = merged;
-      applyTheme(ctx.container, currentTheme);
+      currentTheme = mergeTheme(currentTheme, partial);
+      applyTheme(ctx.container, currentTheme, applyOptions);
     },
 
     resetTheme(): void {
       currentTheme = lightTheme;
       removeTheme(ctx.container);
-      applyTheme(ctx.container, currentTheme);
+      applyTheme(ctx.container, currentTheme, applyOptions);
     },
 
     setupAutoTheme(): void {
@@ -87,10 +86,24 @@ export function createThemeMethods(ctx: SlimGridContext): ThemeMethods {
   if (ctx.options.autoTheme) {
     methods.setupAutoTheme();
   } else if (ctx.options.theme) {
-    methods.setTheme(ctx.options.theme);
+    const themeOption = ctx.options.theme;
+    if (typeof themeOption === 'object' && 'base' in themeOption && 'override' in themeOption) {
+      // { base, override }: start from a base theme and layer a PartialTheme on top
+      currentTheme = mergeTheme(resolveTheme(themeOption.base), themeOption.override);
+      applyTheme(ctx.container, currentTheme, applyOptions);
+    } else {
+      methods.setTheme(themeOption as string | ZenGridTheme);
+    }
   }
 
   return methods;
+}
+
+/** Deep-merge a PartialTheme onto a base theme, returning a new theme. */
+function mergeTheme(base: ZenGridTheme, partial: PartialTheme): ZenGridTheme {
+  const merged = JSON.parse(JSON.stringify(base));
+  deepMergeInto(merged, partial as any);
+  return merged;
 }
 
 /** Deep merge source into target, mutating target */

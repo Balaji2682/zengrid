@@ -28,9 +28,10 @@ import {
   type ExportApi,
 } from './api';
 
-export class Grid {
+export class Zengrid {
   private ctx: SlimGridContext;
   private _theme: ThemeMethods;
+  private _renderWarningScheduled = false;
 
   readonly sort: SortApi;
   readonly filter: FilterApi;
@@ -74,6 +75,35 @@ export class Grid {
       this.ctx.store.exec('filter:init', this.ctx.options.colCount, dataAccessor);
     if (this.ctx.pluginHost.has('sort'))
       this.ctx.store.exec('sort:init', data.length, dataAccessor);
+
+    // Auto-render so `new Zengrid(...)` + `setData(...)` shows data without a
+    // separate `render()`. render() is idempotent: first call runs setup, later
+    // calls just repaint the visible cells against the new data.
+    if (this.ctx.options.autoRender !== false) {
+      if (!this.ctx.isDestroyed) this.render();
+    } else {
+      this.warnIfNeverRendered();
+    }
+  }
+
+  /**
+   * When autoRender is disabled, warn (once) if setData() ran but render() was
+   * never invoked - the most common "grid is blank" pitfall.
+   */
+  private warnIfNeverRendered(): void {
+    if (this._renderWarningScheduled) return;
+    this._renderWarningScheduled = true;
+    const schedule =
+      typeof queueMicrotask === 'function' ? queueMicrotask : (fn: () => void) => Promise.resolve().then(fn);
+    schedule(() => {
+      const isRendered = this.ctx.gridApi.getMethod('lifecycle', 'isRendered')?.() ?? false;
+      if (!isRendered && !this.ctx.isDestroyed && typeof console !== 'undefined') {
+        console.warn(
+          'ZenGrid: setData() was called but render() was never invoked, so the grid is blank. ' +
+            'Call grid.render(), or enable autoRender in GridOptions.'
+        );
+      }
+    });
   }
 
   getData(row: number, col: number): any {
@@ -325,6 +355,7 @@ export class Grid {
   scrollThroughCells = (cells: any[], o?: any) => this.scroll.throughCells(cells, o);
   getScrollPosition = () => this.scroll.getPosition();
   getVisibleRange = () => this.scroll.getVisibleRange();
+  getScrollElement = () => this.scroll.getElement();
 
   getStateSnapshot = () => this.state.getSnapshot();
   applyStateSnapshot = (s: any) => this.state.applySnapshot(s);

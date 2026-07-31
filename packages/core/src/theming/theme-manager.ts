@@ -55,6 +55,18 @@ export function themeToCSSVariables(theme: ZenGridTheme): Record<string, string>
   vars['--zg-font-weight-semibold'] = String(theme.typography.fontWeight.semibold);
   vars['--zg-font-weight-bold'] = String(theme.typography.fontWeight.bold);
 
+  // Typography - header (optional; only emit provided fields so CSS defaults
+  // fall back to the body typography above)
+  const header = theme.typography.header;
+  if (header) {
+    if (header.fontFamily) vars['--zg-header-font-family'] = header.fontFamily;
+    if (header.fontSize) vars['--zg-header-font-size'] = header.fontSize;
+    if (header.fontWeight != null) vars['--zg-header-font-weight'] = String(header.fontWeight);
+    if (header.textTransform) vars['--zg-header-text-transform'] = header.textTransform;
+    if (header.letterSpacing) vars['--zg-header-letter-spacing'] = header.letterSpacing;
+    if (header.color) vars['--zg-header-color'] = header.color;
+  }
+
   // Spacing
   vars['--zg-cell-padding-x'] = theme.spacing.cellPaddingX;
   vars['--zg-cell-padding-y'] = theme.spacing.cellPaddingY;
@@ -98,8 +110,22 @@ export function themeToCSSVariables(theme: ZenGridTheme): Record<string, string>
   return vars;
 }
 
+/** Options for {@link applyTheme} */
+export interface ApplyThemeOptions {
+  /**
+   * Emit the legacy bare `data-theme="light|dark"` attribute. Disable to avoid
+   * colliding with host apps that theme off a plain `[data-theme]` selector.
+   * @default true
+   */
+  legacyThemeAttribute?: boolean;
+}
+
 /** Apply a theme to a grid container element */
-export function applyTheme(container: HTMLElement, theme: ZenGridTheme): void {
+export function applyTheme(
+  container: HTMLElement,
+  theme: ZenGridTheme,
+  options?: ApplyThemeOptions
+): void {
   const vars = themeToCSSVariables(theme);
 
   // Batch-set all CSS variables on the container (scoped, no :root pollution)
@@ -110,8 +136,12 @@ export function applyTheme(container: HTMLElement, theme: ZenGridTheme): void {
   // Set data attribute for CSS selectors
   container.setAttribute('data-zg-theme', theme.id);
 
-  // Legacy compat attributes
-  container.setAttribute('data-theme', theme.mode);
+  // Legacy compat attribute (opt-out to avoid colliding with host [data-theme])
+  if (options?.legacyThemeAttribute !== false) {
+    container.setAttribute('data-theme', theme.mode);
+  } else {
+    container.removeAttribute('data-theme');
+  }
   if (theme.mode === 'dark') {
     container.classList.add('zg-theme-dark');
   } else {
@@ -141,6 +171,8 @@ export function removeTheme(container: HTMLElement): void {
     '--zg-font-family', '--zg-font-size', '--zg-line-height',
     '--zg-font-weight-normal', '--zg-font-weight-medium',
     '--zg-font-weight-semibold', '--zg-font-weight-bold',
+    '--zg-header-font-family', '--zg-header-font-size', '--zg-header-font-weight',
+    '--zg-header-text-transform', '--zg-header-letter-spacing', '--zg-header-color',
     '--zg-cell-padding-x', '--zg-cell-padding-y', '--zg-header-padding',
     '--zg-border-width', '--zg-border-radius',
     '--zg-shadow-sm', '--zg-shadow-md', '--zg-shadow-lg',

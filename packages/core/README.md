@@ -24,12 +24,12 @@ npm install @zengrid/core
 ## Quick Start
 
 ```typescript
-import { Grid } from '@zengrid/core';
+import { Zengrid } from '@zengrid/core';
 import '@zengrid/core/styles.css';
 
 const container = document.getElementById('grid-container')!;
 
-const grid = new Grid(container, {
+const grid = new Zengrid(container, {
   rowCount: 100000,
   colCount: 10,
   rowHeight: 30,

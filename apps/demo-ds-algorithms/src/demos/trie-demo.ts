@@ -1,7 +1,7 @@
-import type { Grid } from '@zengrid/core';
+import type { Zengrid } from '@zengrid/core';
 import { ALL_PRODUCTS } from './shared-data';
 
-export function initTrieDemo(grid: Grid) {
+export function initTrieDemo(grid: Zengrid) {
   const trieInput = document.getElementById('trie-input') as HTMLInputElement;
   const trieSuggestions = document.getElementById('trie-suggestions') as HTMLUListElement;
   const indexColumnBtn = document.getElementById('index-column-btn') as HTMLButtonElement;

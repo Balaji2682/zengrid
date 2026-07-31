@@ -1,11 +1,11 @@
-import { Grid } from '../grid-core';
+import { Zengrid } from '../grid-core';
 import { resetTracking } from '../../reactive/tracking';
 import { resetDebug } from '../../reactive/debug';
 import { resetScheduler } from '../../reactive/effect-scheduler';
 import type { FieldFilterState } from '../../features/filtering/types';
 
 let container: HTMLElement;
-let grid: Grid;
+let grid: Zengrid;
 
 async function flushAsyncWork(): Promise<void> {
   await Promise.resolve();
@@ -42,7 +42,7 @@ describe('Grid Backend Filter Mode', () => {
       endRow: 1,
     });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 1,
       colCount: 2,
       rowHeight: 30,
@@ -89,7 +89,7 @@ describe('Grid Backend Filter Mode', () => {
       endRow: 1,
     });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 1,
       colCount: 2,
       rowHeight: 30,
@@ -121,7 +121,7 @@ describe('Grid Backend Filter Mode', () => {
       endRow: 1,
     });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 1,
       colCount: 2,
       rowHeight: 30,
@@ -155,7 +155,7 @@ describe('Grid Backend Filter Mode', () => {
       endRow: 1,
     });
 
-    grid = new Grid(container, {
+    grid = new Zengrid(container, {
       rowCount: 4,
       colCount: 3,
       rowHeight: 30,

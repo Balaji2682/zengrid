@@ -8,7 +8,7 @@
  * - Cell edit latency < 16ms
  */
 
-import { Grid } from '../../src/grid';
+import { Zengrid } from '../../src/grid';
 import { GridDataModel } from '../../src/data/grid-data-model';
 
 /**
@@ -121,7 +121,7 @@ describe('Performance Benchmarks', () => {
   describe('Render Performance', () => {
     it('should render 1K rows under 50ms', () => {
       const data = generateTestData(1000, 10);
-      const grid = new Grid(container, {
+      const grid = new Zengrid(container, {
         rowCount: 1000,
         colCount: 10,
         rowHeight: 30,
@@ -141,7 +141,7 @@ describe('Performance Benchmarks', () => {
 
     it('should render 10K rows under 75ms', () => {
       const data = generateTestData(10000, 10);
-      const grid = new Grid(container, {
+      const grid = new Zengrid(container, {
         rowCount: 10000,
         colCount: 10,
         rowHeight: 30,
@@ -161,7 +161,7 @@ describe('Performance Benchmarks', () => {
 
     it('should render 100K rows under 100ms', () => {
       const data = generateTestData(100000, 10);
-      const grid = new Grid(container, {
+      const grid = new Zengrid(container, {
         rowCount: 100000,
         colCount: 10,
         rowHeight: 30,
@@ -185,7 +185,7 @@ describe('Performance Benchmarks', () => {
   describe('Scroll Performance', () => {
     it('should maintain ≥55 FPS during scroll simulation', async () => {
       const data = generateTestData(10000, 10);
-      const grid = new Grid(container, {
+      const grid = new Zengrid(container, {
         rowCount: 10000,
         colCount: 10,
         rowHeight: 30,
@@ -211,7 +211,7 @@ describe('Performance Benchmarks', () => {
       const memoryBefore = PerformanceMeasure.getMemoryUsage();
 
       const data = generateTestData(100000, 10);
-      const grid = new Grid(container, {
+      const grid = new Zengrid(container, {
         rowCount: 100000,
         colCount: 10,
         rowHeight: 30,
@@ -242,7 +242,7 @@ describe('Performance Benchmarks', () => {
       // Create and destroy multiple grids
       for (let i = 0; i < 10; i++) {
         const data = generateTestData(1000, 10);
-        const grid = new Grid(container, {
+        const grid = new Zengrid(container, {
           rowCount: 1000,
           colCount: 10,
           rowHeight: 30,
@@ -321,7 +321,7 @@ describe('Performance Benchmarks', () => {
   describe('Cell Update Performance', () => {
     it('should update single cell under 10ms', () => {
       const data = generateTestData(10000, 10);
-      const grid = new Grid(container, {
+      const grid = new Zengrid(container, {
         rowCount: 10000,
         colCount: 10,
         rowHeight: 30,
@@ -344,7 +344,7 @@ describe('Performance Benchmarks', () => {
 
     it('should update 100 cells under 50ms', () => {
       const data = generateTestData(10000, 10);
-      const grid = new Grid(container, {
+      const grid = new Zengrid(container, {
         rowCount: 10000,
         colCount: 10,
         rowHeight: 30,
@@ -374,7 +374,7 @@ describe('Performance Benchmarks', () => {
   describe('Cell Pool Performance', () => {
     it('should achieve >95% pool reuse rate', () => {
       const data = generateTestData(10000, 10);
-      const grid = new Grid(container, {
+      const grid = new Zengrid(container, {
         rowCount: 10000,
         colCount: 10,
         rowHeight: 30,
@@ -405,7 +405,7 @@ describe('Performance Benchmarks', () => {
   describe('Regression Tests', () => {
     it('should not degrade performance over multiple operations', () => {
       const data = generateTestData(1000, 10);
-      const grid = new Grid(container, {
+      const grid = new Zengrid(container, {
         rowCount: 1000,
         colCount: 10,
         rowHeight: 30,

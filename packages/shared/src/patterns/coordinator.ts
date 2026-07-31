@@ -8,7 +8,7 @@
  * ```typescript
  * class SortCoordinator extends BaseCoordinator {
  *   constructor(
- *     private grid: Grid,
+ *     private grid: Zengrid,
  *     private sortManager: SortManager
  *   ) {
  *     super();

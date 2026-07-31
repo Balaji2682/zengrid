@@ -48,6 +48,18 @@ export interface ThemeTypography {
     semibold: number;
     bold: number;
   };
+  /**
+   * Optional header-specific typography. Any field left undefined falls back to
+   * the body typography above (via CSS variable defaults).
+   */
+  header?: {
+    fontFamily?: string;
+    fontSize?: string;
+    fontWeight?: number | string;
+    textTransform?: string;
+    letterSpacing?: string;
+    color?: string;
+  };
 }
 
 export interface ThemeSpacing {

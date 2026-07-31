@@ -19,6 +19,7 @@ export class ZenColumnComponent {
   readonly field = input.required<string>();
   readonly header = input.required<string>();
   readonly width = input<number | undefined>(undefined);
+  readonly align = input<'left' | 'center' | 'right' | undefined>(undefined);
   readonly renderer = input<RendererInput | undefined>(undefined);
   readonly sortable = input<boolean | undefined>(undefined);
   readonly editable = input<boolean | undefined>(undefined);
@@ -45,6 +46,7 @@ export class ZenColumnComponent {
 
     const colId = this.id();
     const w = this.width();
+    const alignment = this.align();
     const sort = this.sortable();
     const edit = this.editable();
     const edOpts = this.editorOptions();
@@ -58,6 +60,7 @@ export class ZenColumnComponent {
 
     if (colId !== undefined) def.id = colId;
     if (w !== undefined) def.width = w;
+    if (alignment !== undefined) def.align = alignment;
     if (sort !== undefined) def.sortable = sort;
     if (edit !== undefined) def.editable = edit;
     if (edOpts !== undefined) def.editorOptions = edOpts;

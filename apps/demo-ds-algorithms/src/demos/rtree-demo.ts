@@ -1,6 +1,6 @@
-import type { Grid } from '@zengrid/core';
+import type { Zengrid } from '@zengrid/core';
 
-export function initRTreeDemo(grid: Grid) {
+export function initRTreeDemo(grid: Zengrid) {
   const rtreeInitBtn = document.getElementById('rtree-init') as HTMLButtonElement;
   const hitTestOutput = document.getElementById('hit-test-output') as HTMLDivElement;
   const rtreeCells = document.getElementById('rtree-cells') as HTMLDivElement;
