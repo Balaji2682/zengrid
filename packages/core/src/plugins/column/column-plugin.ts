@@ -124,14 +124,13 @@ export function createColumnPlugin(opts: ColumnPluginOptions): GridPlugin {
             });
           }
 
-          const visibleColCount = columnModel
-            ? columnModel.getVisibleCount()
-            : options.colCount;
-
           resizeManager = new ColumnResizeManager({
             events,
             widthProvider: scroller.getWidthProvider(),
-            colCount: visibleColCount,
+            // Live count so hiding/showing a column doesn't leave handle updates
+            // reading a stale, out-of-range column index.
+            colCount: () =>
+              columnModel ? columnModel.getVisibleCount() : options.colCount,
             getColOffset: (col: number) => scroller.getColOffset(col),
             getColWidth: (col: number) => scroller.getColWidth(col),
             onWidthChange: (col: number, width: number) => {

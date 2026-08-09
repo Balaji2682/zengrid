@@ -89,7 +89,8 @@ export class ResizeTestHelper {
     dataSource: MockResizableDataSource;
     container: HTMLElement;
   } {
-    const colCount = options?.colCount ?? 5;
+    const rawColCount = options?.colCount ?? 5;
+    const colCount = typeof rawColCount === 'function' ? rawColCount() : rawColCount;
     const rowCount = options?.rowCount ?? 100;
 
     // Create mock data source

@@ -86,6 +86,118 @@
   background: var(--zg-hover-bg);
 }
 
+/* Row-span anchor: one tall merged cell drawn over several rows. Its content is
+   vertically centered across the whole span (inherited from .zg-cell's flex),
+   and it sits above neighbours so its box-shadow border isn't clipped at seams. */
+.zg-cell-row-span {
+  z-index: 1;
+}
+
+/* Pinned rows: fixed top/bottom bands overlaying the scroll area. The bands sit
+   above the scrolling body and carry an opaque background so the duplicate of the
+   row still visible in the body doesn't bleed through. */
+.zg-pinned-top,
+.zg-pinned-bottom {
+  z-index: 2;
+  background: var(--zg-bg-color);
+  pointer-events: auto;
+}
+
+.zg-pinned-top {
+  box-shadow: inset 0 -2px 0 0 var(--zg-border-color);
+}
+
+.zg-pinned-bottom {
+  box-shadow: inset 0 2px 0 0 var(--zg-border-color);
+}
+
+/* Pinned cells are drawn bold by default to set them apart, matching the common
+   convention for pinned/summary rows. */
+.zg-cell-pinned {
+  font-weight: 600;
+  background: var(--zg-bg-color);
+}
+
+/* Standalone pinned rows (pinnedTop/BottomRowData — e.g. header/summary/total
+   rows) get a faint tint so they read as distinct from pinned dataset rows. */
+.zg-cell-pinned-data {
+  background: var(--zg-header-bg, var(--zg-bg-color));
+}
+
+/* Frozen (pinned) columns. Body and header cells are repositioned "sticky" by the
+   renderer; these rules give them an opaque background so the scrolling cells pass
+   behind them, and a soft shadow marks the band edge. Only the band's outermost
+   cell's shadow shows — the others are covered by the adjacent opaque pinned cell. */
+.zg-cell-pinned-col {
+  background: var(--zg-bg-color, #fff);
+}
+.zg-cell-pinned-col-left {
+  box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.22);
+}
+.zg-cell-pinned-col-right {
+  box-shadow: -2px 0 5px -2px rgba(0, 0, 0, 0.22);
+}
+.zg-header-cell-pinned {
+  position: relative;
+  background: var(--zg-header-bg, #f5f5f5);
+}
+.zg-header-cell-pinned-left {
+  box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.22);
+}
+.zg-header-cell-pinned-right {
+  box-shadow: -2px 0 5px -2px rgba(0, 0, 0, 0.22);
+}
+
+/* Grouped-header banner cells — drawn in the strip above the leaf headers, each
+   spanning the columns of its group and scroll-synced with the body. */
+.zg-header-groups {
+  pointer-events: none;
+}
+.zg-header-groups-track {
+  will-change: transform;
+}
+.zg-header-group-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border-right: 1px solid var(--zg-border-color, #d0d0d0);
+  border-bottom: 1px solid var(--zg-border-color, #d0d0d0);
+  background: var(--zg-header-bg, #f5f5f5);
+  font-weight: 600;
+  color: var(--zg-header-text-color, inherit);
+  overflow: hidden;
+  pointer-events: auto;
+}
+.zg-header-group-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0 10px;
+}
+.zg-header-group-toggle {
+  flex: none;
+  margin-right: 6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--zg-header-text-color, inherit);
+  background: transparent;
+  border: 1px solid var(--zg-border-color, #d0d0d0);
+  border-radius: 3px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.zg-header-group-toggle:hover {
+  background: var(--zg-border-color, #d0d0d0);
+}
+
 /* Selected cell - full border box, raised above neighbors so no edge is clipped */
 .zg-cell-selected {
   background: var(--zg-selected-bg);

@@ -4,6 +4,9 @@ import type { CellPool } from '../cell-pool';
 import type { RendererRegistry } from '../renderers';
 import type { IRendererCache } from '../cache';
 import type { RowHeightManager } from '../../features/row-height/row-height-manager';
+import type { RowSpanProvider } from '../row-span/row-span';
+import type { RowStyleProvider } from '../row-style/row-style';
+import type { ColumnPinProvider, ColumnPinInfo } from '../col-pin/col-pin';
 
 /**
  * Options for creating a CellPositioner
@@ -67,6 +70,48 @@ export interface CellPositionerOptions {
    * When provided, rows will be measured after rendering if needed
    */
   rowHeightManager?: RowHeightManager;
+
+  /**
+   * Row-span layout provider (optional). When set, anchor cells are drawn tall
+   * and the cells they cover are skipped. Core ships none; `@zengrid/enterprise`
+   * supplies one via `rowSpanning()`.
+   */
+  spanProvider?: RowSpanProvider;
+
+  /**
+   * Per-row class/style provider (optional). When set, the resolved classes and
+   * inline styles are applied to every cell in the row. Core ships none;
+   * `@zengrid/enterprise` supplies one via `rowStyling()`.
+   */
+  rowStyleProvider?: RowStyleProvider;
+
+  /**
+   * Frozen-column layout provider (optional). When set, the columns it reports
+   * are drawn "sticky" against the left/right edge each pass. Core ships none;
+   * `@zengrid/enterprise` supplies one via `columnPinning()`.
+   */
+  colPinProvider?: ColumnPinProvider;
+
+  /**
+   * Returns the visible columns in display order (index/width/def), used to
+   * build the pin provider's context. Only called when `colPinProvider` is set.
+   */
+  getPinColumns?: () => ColumnPinInfo[];
+
+  /**
+   * The scrolling cells container (the CellPool's container). Pinned cells are
+   * moved out of it into a pin band and back when unpinned; supplied so the
+   * positioner can re-parent recycled cells to the correct layer.
+   */
+  cellsContainer?: HTMLElement;
+
+  /**
+   * The left/right frozen-column sticky band containers (created by the DOM
+   * plugin when a `colPinProvider` is set). Pinned cells are rendered into these
+   * so CSS `position: sticky` freezes them horizontally with no per-frame JS.
+   */
+  pinLeftBand?: HTMLElement;
+  pinRightBand?: HTMLElement;
 }
 
 /**

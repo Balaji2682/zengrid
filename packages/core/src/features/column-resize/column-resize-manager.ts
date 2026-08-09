@@ -34,7 +34,6 @@ export class ColumnResizeManager {
     this.handleCoordinator = new HandleCoordinator(
       components.dataSource,
       components.stateManager,
-      () => options.getScrollLeft?.() ?? 0,
       () => options.getHeaderHeight?.() ?? 40
     );
 

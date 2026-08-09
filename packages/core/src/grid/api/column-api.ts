@@ -1,5 +1,5 @@
 import type { ColumnConstraints } from '../../features/column-resize';
-import type { ColumnStateSnapshot } from '../../types';
+import type { ColumnModel } from '../../features/columns';
 import type { SlimGridContext } from '../grid-context';
 
 export interface ColumnApi {
@@ -13,8 +13,13 @@ export interface ColumnApi {
   attachDrag(headerElement: HTMLElement): void;
   detachDrag(): void;
   isDragging(): boolean;
-  getState(): ColumnStateSnapshot[];
-  applyState(state: ColumnStateSnapshot[], options?: { applyWidth?: boolean; applyVisibility?: boolean; applyOrder?: boolean }): void;
+  /**
+   * The live column model — the low-level layout primitive (widths, visibility,
+   * order, pin state). Capturing and restoring that layout as a snapshot is an
+   * enterprise feature: see `@zengrid/enterprise`'s `ColumnStateManager`, which
+   * reads and writes this model.
+   */
+  getModel(): ColumnModel | null;
 }
 
 export function createColumnApi(ctx: SlimGridContext): ColumnApi {
@@ -60,13 +65,9 @@ export function createColumnApi(ctx: SlimGridContext): ColumnApi {
       return api ? api() : false;
     },
 
-    getState(): ColumnStateSnapshot[] {
-      const api = ctx.gridApi.getMethod('column', 'getState');
-      return api ? api() : [];
-    },
-
-    applyState(state: ColumnStateSnapshot[], options?: { applyWidth?: boolean; applyVisibility?: boolean; applyOrder?: boolean }): void {
-      ctx.store.exec('column:applyState', state, options);
+    getModel(): ColumnModel | null {
+      const api = ctx.gridApi.getMethod('column', 'getModel');
+      return api ? api() : null;
     },
   };
 }

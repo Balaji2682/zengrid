@@ -9,7 +9,8 @@
  *
  * Order (later wins for equal specificity):
  *   tokens < grid < header < filter < overlays < cell-renderers
- *   < cell-overflow < calendar < date-picker < dropdown < a11y
+ *   < cell-overflow < calendar < date-picker < dropdown < pagination
+ *   < column-resize < a11y
  */
 @import './styles/tokens.css';
 @import './styles/grid.css';
@@ -21,4 +22,6 @@
 @import './styles/calendar.css';
 @import './styles/date-picker.css';
 @import './styles/dropdown.css';
+@import './features/pagination/pagination.styles.css';
+@import './features/column-resize/column-resize.styles.css';
 @import './styles/a11y.css';

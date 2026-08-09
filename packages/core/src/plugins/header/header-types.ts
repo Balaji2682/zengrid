@@ -23,6 +23,22 @@ export function resolveHeaderHeight(options: GridOptions): number {
   return typeof h === 'number' && h > 0 ? h : DEFAULT_HEADER_HEIGHT;
 }
 
+/** Number of grouped-header banner rows above the leaf headers (0 when off). */
+export function resolveColumnGroupLevels(options: GridOptions): number {
+  const levels = options.colGroupProvider?.levels ?? 0;
+  return Number.isInteger(levels) && levels > 0 ? levels : 0;
+}
+
+/**
+ * Total header area height: the leaf-header row plus one row per group banner
+ * level. Used to offset the body and size the header container. Equals the plain
+ * `resolveHeaderHeight` when no column-group provider is set.
+ */
+export function resolveTotalHeaderHeight(options: GridOptions): number {
+  const base = resolveHeaderHeight(options);
+  return base * (1 + resolveColumnGroupLevels(options));
+}
+
 /**
  * Configuration for HeaderManager
  */

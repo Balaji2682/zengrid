@@ -6,6 +6,7 @@ import type { DataAccessor } from '../../data/data-accessor/data-accessor.interf
 import { VirtualScroller } from '../../rendering/virtual-scroller/virtual-scroller';
 import { CellPool } from '../../rendering/cell-pool/cell-pool';
 import { CellPositioner } from '../../rendering/cell-positioner/cell-positioner';
+import { PinnedRowsRenderer } from '../../rendering/row-pin/pinned-rows-renderer';
 import { RendererRegistry } from '../../rendering/renderers/renderer-registry';
 import { RendererCache } from '../../rendering/cache';
 import { NumberRenderer } from '../../rendering/renderers/number';
@@ -61,6 +62,10 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
       let scroller: VirtualScroller | null = null;
       let pool: CellPool | null = null;
       let positioner: CellPositioner | null = null;
+      let pinnedRenderer: PinnedRowsRenderer | null = null;
+      let pinUnsub: (() => void) | null = null;
+      let rowStyleUnsub: (() => void) | null = null;
+      let colPinUnsub: (() => void) | null = null;
       let rafId: number | null = null;
 
       // Scroll velocity tracking
@@ -113,14 +118,33 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
             const mappedRow = mapRowToDataIndex(row);
             if (mappedRow === undefined || mappedRow < 0) return undefined;
             const columnModel = getColumnModel();
-            let dataCol = col;
-            if (columnModel) {
-              const orderedColumns = columnModel.getVisibleColumnsInOrder();
-              if (orderedColumns && orderedColumns[col]) {
-                dataCol = orderedColumns[col].dataIndex;
-              }
+            const orderedColumns = columnModel?.getVisibleColumnsInOrder();
+            const colState = orderedColumns?.[col];
+            const dataCol = colState ? colState.dataIndex : col;
+
+            // A calculated column derives its value from the row instead of a
+            // positional read. `getValue(field)` resolves another column's source
+            // value so the getter can combine fields.
+            const valueGetter = colState?.definition?.valueGetter;
+            if (valueGetter) {
+              const accessor = getDataAccessor();
+              return valueGetter({
+                row,
+                field: colState!.field,
+                data: state.data[mappedRow],
+                getValue: (field: string) => {
+                  const target = orderedColumns?.find((c: any) => c.field === field);
+                  return target ? accessor?.getValue(mappedRow, target.dataIndex) : undefined;
+                },
+              });
             }
+
             return getDataAccessor()?.getValue(mappedRow, dataCol);
+          },
+          getRowData: (row: number) => {
+            const mappedRow = mapRowToDataIndex(row);
+            if (mappedRow === undefined || mappedRow < 0) return undefined;
+            return state.data[mappedRow];
           },
           getColumn: (col: number) => {
             const columnModel = getColumnModel();
@@ -216,6 +240,8 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
 
           // Initialize CellPool
           const cellsContainer = canvas.querySelector('.zg-cells') as HTMLElement;
+          const pinLeftBand = canvas.querySelector('.zg-pin-left') as HTMLElement | null;
+          const pinRightBand = canvas.querySelector('.zg-pin-right') as HTMLElement | null;
           pool = new CellPool({
             container: cellsContainer,
             initialSize: 100,
@@ -230,13 +256,84 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
             registry,
             cache: cache ?? undefined,
             rowHeightManager: rowHeightManager ?? undefined,
+            spanProvider: options.spanProvider,
+            rowStyleProvider: options.rowStyleProvider,
+            colPinProvider: options.colPinProvider,
+            cellsContainer,
+            pinLeftBand: pinLeftBand ?? undefined,
+            pinRightBand: pinRightBand ?? undefined,
+            getPinColumns: options.colPinProvider
+              ? () => {
+                  const cm = getColumnModel();
+                  if (!cm) return [];
+                  return cm
+                    .getVisibleColumnsInOrder()
+                    .map((c: any, i: number) => ({
+                      index: i,
+                      width: c.actualWidth,
+                      def: c.definition,
+                    }));
+                }
+              : undefined,
             ...callbacks,
           });
+
+          // Re-render when row styling depends on mutable state and changes.
+          rowStyleUnsub =
+            options.rowStyleProvider?.subscribe?.(() => positioner?.refresh()) ?? null;
+
+          // Re-render the body when the pinned set changes live (the header plugin
+          // subscribes separately to re-sync its frozen cells).
+          colPinUnsub =
+            options.colPinProvider?.subscribe?.(() => positioner?.refresh()) ?? null;
+
+          // Pinned-row bands (off unless a provider is configured).
+          if (options.pinProvider) {
+            const pinnedTop = store.get('dom.pinnedTop') as HTMLElement | null;
+            const pinnedBottom = store.get('dom.pinnedBottom') as HTMLElement | null;
+            if (pinnedTop && pinnedBottom) {
+              pinnedRenderer = new PinnedRowsRenderer({
+                topBand: pinnedTop,
+                bottomBand: pinnedBottom,
+                scroller,
+                registry,
+                getData: callbacks.getData,
+                getColumn: callbacks.getColumn,
+              });
+              computePinLayout();
+              renderPinned();
+              // Re-render the bands whenever the pinned set changes (e.g. a user pins a row).
+              pinUnsub = options.pinProvider.subscribe?.(() => {
+                computePinLayout();
+                renderPinned();
+              }) ?? null;
+            }
+          }
 
           store.set('rendering.initialized', true);
         },
         'rendering'
       );
+
+      // Recompute which rows are pinned (changes only on data/view/pin edits).
+      function computePinLayout(): void {
+        if (!pinnedRenderer || !scroller || !options.pinProvider) return;
+        const layout = options.pinProvider.getPinned({
+          rowCount: scroller.rowCount,
+          getRowId: (row: number) => mapRowToDataIndex(row),
+        });
+        pinnedRenderer.setLayout(layout.top, layout.bottom, layout.topData, layout.bottomData);
+      }
+
+      // Redraw the band cells for the current visible columns and sync horizontal scroll.
+      function renderPinned(): void {
+        if (!pinnedRenderer || !scroller) return;
+        const range = scroller.calculateVisibleRange(
+          state.scrollPosition.top,
+          state.scrollPosition.left
+        );
+        pinnedRenderer.render(range, state.scrollPosition.left);
+      }
 
       store.action(
         'rendering:updateScroller',
@@ -274,6 +371,9 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
             );
             positioner.refresh();
           }
+          // Column widths/count may have changed — resize and redraw the bands.
+          computePinLayout();
+          renderPinned();
         },
         'rendering',
         { invalidates: ['rendering:refresh'] }
@@ -285,6 +385,7 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
           if (positioner) {
             positioner.renderVisibleCells(scrollTop, scrollLeft);
           }
+          renderPinned();
         },
         'rendering'
       );
@@ -303,6 +404,7 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
         'rendering:refresh',
         () => {
           if (positioner) positioner.refresh();
+          renderPinned();
         },
         'rendering'
       );
@@ -368,6 +470,7 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
               rafId = null;
             }
             if (positioner) positioner.renderVisibleCells(scrollTop, scrollLeft);
+            renderPinned();
             if (options.onScroll) options.onScroll(scrollTop, scrollLeft);
           } else {
             if (rafId !== null) return;
@@ -375,6 +478,7 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
               rafId = null;
               if (!positioner) return;
               positioner.renderVisibleCells(scrollTop, scrollLeft);
+              renderPinned();
               if (options.onScroll) options.onScroll(scrollTop, scrollLeft);
             });
           }
@@ -445,6 +549,9 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
           positioner.clearRenderedCells();
           positioner.renderVisibleCells(state.scrollPosition.top, state.scrollPosition.left);
         }
+        // The view (sort/filter/page) changed, so which rows are pinned may have too.
+        computePinLayout();
+        renderPinned();
       }
 
       store.action('rendering:syncAfterPipeline', syncViewport, 'rendering');
@@ -557,11 +664,19 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
             for (const unsub of eventUnsubs) unsub();
             eventUnsubs.length = 0;
             if (rafId !== null) cancelAnimationFrame(rafId);
+            if (pinUnsub) pinUnsub();
+            if (rowStyleUnsub) rowStyleUnsub();
+            if (colPinUnsub) colPinUnsub();
+            if (pinnedRenderer) pinnedRenderer.destroy();
             if (positioner) positioner.destroy();
             if (pool) pool.clear();
             scroller = null;
             pool = null;
             positioner = null;
+            pinnedRenderer = null;
+            pinUnsub = null;
+            rowStyleUnsub = null;
+            colPinUnsub = null;
             rafId = null;
           },
         ],

@@ -12,3 +12,5 @@ export { createStateApi } from './state-api';
 export type { StateApi } from './state-api';
 export { createExportApi } from './export-api';
 export type { ExportApi } from './export-api';
+export { createRowsApi } from './rows-api';
+export type { RowsApi } from './rows-api';

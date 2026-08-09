@@ -3,6 +3,11 @@
  */
 
 import type { RendererCacheConfig } from '../rendering/cache';
+import type { RowSpanProvider } from '../rendering/row-span/row-span';
+import type { RowPinProvider } from '../rendering/row-pin/row-pin';
+import type { RowStyleProvider } from '../rendering/row-style/row-style';
+import type { ColumnPinProvider } from '../rendering/col-pin/col-pin';
+import type { ColumnGroupProvider } from '../rendering/col-group/col-group';
 import type { OperationMode } from '@zengrid/shared';
 import type { CellRef, CellRange } from './cell';
 import type { ColumnDef, SortIcons } from './column';
@@ -22,6 +27,47 @@ export interface GridOptions {
   rowHeight: number | number[]; // Uniform or variable row heights
   colWidth: number | number[]; // Uniform or variable column widths
   columns?: ColumnDef[];
+
+  /**
+   * Row-span layout provider. Drives which cells merge vertically (anchors drawn
+   * tall, covered cells skipped). Core ships none — spanning is off unless a
+   * provider is supplied. Use `@zengrid/enterprise`'s `rowSpanning()`, which reads
+   * each column's `rowSpan` resolver.
+   */
+  spanProvider?: RowSpanProvider;
+
+  /**
+   * Pinned-row layout provider. Drives which rows are fixed in top/bottom bands
+   * that overlay the scroll area. Core ships none — pinning is off unless a
+   * provider is supplied. Use `@zengrid/enterprise`'s `rowPinning()`, which reads
+   * a `RowPinManager`.
+   */
+  pinProvider?: RowPinProvider;
+
+  /**
+   * Per-row class/style provider. Because the grid renders individual pooled
+   * cells (no per-row DOM element), the resolved classes/styles are applied to
+   * every cell in the row. Core ships none — row styling is off unless a provider
+   * is supplied. Use `@zengrid/enterprise`'s `rowStyling()`, which reads static or
+   * callback `rowClass`/`rowStyle` config.
+   */
+  rowStyleProvider?: RowStyleProvider;
+
+  /**
+   * Frozen-column layout provider. Drives which columns stay fixed against the
+   * left/right edge while the rest scroll horizontally. Core ships none —
+   * column pinning is off unless a provider is supplied. Use
+   * `@zengrid/enterprise`'s `columnPinning()`, which reads each column's
+   * declarative `pinned: 'left' | 'right'`.
+   */
+  colPinProvider?: ColumnPinProvider;
+
+  /**
+   * Grouped-header layout provider. Draws banner rows above the leaf headers that
+   * span related columns. Core ships none — grouped headers are off unless a
+   * provider is supplied. Use `@zengrid/enterprise`'s `columnGroups()`.
+   */
+  colGroupProvider?: ColumnGroupProvider;
 
   /** Header row height in pixels. Defaults to 40. */
   headerHeight?: number;
@@ -302,6 +348,8 @@ export interface ColumnStateSnapshot {
   width?: number;
   visible?: boolean;
   order?: number;
+  /** Frozen side, captured/restored by `@zengrid/enterprise`'s `ColumnStateManager`. */
+  pinned?: 'left' | 'right' | null;
 }
 
 /**

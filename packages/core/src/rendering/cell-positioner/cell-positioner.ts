@@ -9,6 +9,10 @@ import type { ViewportModel } from '../../features/viewport/viewport-model';
 import type { ViewportEvent } from '../../features/viewport/types';
 import type { StateSubscriber } from '@zengrid/shared';
 import type { ColumnDef } from '../../types/column';
+import type { ColumnSpanInfo } from '../row-span/row-span';
+import type { RowStyleResult } from '../row-style/row-style';
+import type { ResolvedColumnPin } from '../col-pin/col-pin';
+import { resolveColumnPin } from '../col-pin/col-pin';
 import { IS_DEV } from '../../reactive/debug';
 
 /**
@@ -63,8 +67,34 @@ export class CellPositioner implements ICellPositioner {
   private isActive: NonNullable<CellPositionerOptions['isActive']>;
   private isEditing: NonNullable<CellPositionerOptions['isEditing']>;
   private rowHeightManager: CellPositionerOptions['rowHeightManager'];
+  private spanProvider: CellPositionerOptions['spanProvider'];
+  private rowStyleProvider: CellPositionerOptions['rowStyleProvider'];
+  private colPinProvider: CellPositionerOptions['colPinProvider'];
+  private getPinColumns: CellPositionerOptions['getPinColumns'];
+  // The scrolling cells container and the frozen-column sticky bands. Pinned
+  // cells are re-parented from the cells container into a band (and back when
+  // unpinned); the band's CSS `position: sticky` freezes them horizontally.
+  private cellsContainer: HTMLElement | null;
+  private pinLeftBand: HTMLElement | null;
+  private pinRightBand: HTMLElement | null;
+  // Resolved frozen-column layout for the current pass (null when no provider or
+  // no columns are pinned). Recomputed each pass since widths/order can change.
+  private colPin: ResolvedColumnPin | null = null;
 
   private lastRange: VisibleRange | null = null;
+  // Row-style results memoized for the current render pass, keyed by row. Cleared
+  // each pass since the provider may depend on mutable state; `null` marks a row
+  // the provider styled with nothing (so it isn't re-queried within the pass).
+  private rowStyleCache: Map<number, RowStyleResult | null> = new Map();
+  // The row-style classes/props last applied to each pooled element, so a recycled
+  // cell can be stripped of a prior row's styling before the new row's is applied.
+  private appliedRowStyle: WeakMap<HTMLElement, { classes: string[]; props: string[] }> =
+    new WeakMap();
+  // Row-span layout for the current render pass, keyed by column index. Only
+  // columns whose ColumnDef supplies a `rowSpan` resolver appear here, and only
+  // when they produce at least one anchor in the visible window. Recomputed each
+  // pass because spans are window-local (their heights depend on the top row).
+  private spanInfo: Map<number, ColumnSpanInfo> = new Map();
   private renderedCells: Map<string, string> = new Map(); // key -> renderer name
   // The renderer instance actually applied to each pooled element. Keyed by the
   // element (not the cell key) so destroy() dispatches to the correct renderer
@@ -95,6 +125,13 @@ export class CellPositioner implements ICellPositioner {
     this.isActive = options.isActive ?? (() => false);
     this.isEditing = options.isEditing ?? (() => false);
     this.rowHeightManager = options.rowHeightManager;
+    this.spanProvider = options.spanProvider;
+    this.rowStyleProvider = options.rowStyleProvider;
+    this.colPinProvider = options.colPinProvider;
+    this.getPinColumns = options.getPinColumns;
+    this.cellsContainer = options.cellsContainer ?? null;
+    this.pinLeftBand = options.pinLeftBand ?? null;
+    this.pinRightBand = options.pinRightBand ?? null;
     this.setupDprListener();
   }
 
@@ -151,26 +188,98 @@ export class CellPositioner implements ICellPositioner {
   }
 
   /**
+   * Recompute the frozen-column layout for this pass. No-op (clears) unless a
+   * `colPinProvider` is set and it reports at least one pinned column.
+   */
+  private computeColPin(): void {
+    if (!this.colPinProvider || !this.getPinColumns) {
+      this.colPin = null;
+      return;
+    }
+    const columns = this.getPinColumns();
+    if (!columns || columns.length === 0) {
+      this.colPin = null;
+      return;
+    }
+    const layout = this.colPinProvider.getPinned({ columns });
+    const resolved = resolveColumnPin(layout, (col) => columns[col]?.width ?? 0);
+    this.colPin = resolved.hasPins ? resolved : null;
+  }
+
+  /**
+   * Render the pinned columns for a row range into their sticky bands. The bands
+   * are CSS `position: sticky`, so the compositor freezes the columns
+   * horizontally with no per-frame JS — a pinned cell already drawn needs no
+   * scroll-driven update at all (unlike the old approach that re-set `left` each
+   * scroll frame and fought the compositor, causing the wobble). Called after the
+   * normal loop and before the pool releases unused cells, so their keys survive.
+   */
+  private renderPinnedColumns(
+    startRow: number,
+    endRow: number,
+    activeKeys: Set<string>,
+    forceRender: boolean
+  ): void {
+    const pin = this.colPin;
+    if (!pin) return;
+    const colCount = this.scroller.colCount;
+    for (const col of [...pin.leftCols, ...pin.rightCols]) {
+      if (col < 0 || col >= colCount) continue;
+      const side = pin.sideOf(col);
+      if (!side) continue;
+      for (let row = startRow; row < endRow; row++) {
+        if (this.spanInfo.size > 0 && this.isCovered(row, col)) continue;
+        const key = this.getCellKey(row, col);
+        activeKeys.add(key);
+        // Render only when forced (data refresh), for span columns (their
+        // heights/roles are window-relative), or for a row that just scrolled
+        // into view. Horizontal freezing is handled by the band's CSS.
+        if (forceRender || this.spanInfo.has(col) || !this.renderedCells.has(key)) {
+          this.renderCell(row, col, key, side);
+        }
+      }
+    }
+  }
+
+  /**
    * Render cells in a specific range with two-phase auto-height measurement
    *
    * Phase 1: Render all cells with current/cached heights
    * Phase 2 (RAF): Measure auto-height cells, update heights, re-position if needed
    */
   private renderCellsInRange(range: VisibleRange): void {
+    this.computeSpans(range);
+    this.computeColPin();
+    this.rowStyleCache.clear();
     const activeKeys = new Set<string>();
 
     // PHASE 1: Render all visible cells
     for (let row = range.startRow; row < range.endRow; row++) {
       for (let col = range.startCol; col < range.endCol; col++) {
+        // Covered rows sit under an anchor above them: skip so the pool releases
+        // them and no cell is drawn over the tall anchor.
+        if (this.spanInfo.size > 0 && this.isCovered(row, col)) continue;
+        // Pinned columns are drawn separately (sticky) so they always render and
+        // ride the scroll — skip them in the normal body loop.
+        if (this.colPin && this.colPin.sideOf(col)) continue;
+
         const key = this.getCellKey(row, col);
         activeKeys.add(key);
 
-        // Always render if cell is newly visible
-        if (!this.renderedCells.has(key)) {
+        // Span columns re-render every pass: an anchor's height sums the covered
+        // rows, which is window-relative, and a cell's anchor/normal role flips as
+        // the top row scrolls. Other columns keep the newly-visible fast path.
+        if (this.spanInfo.has(col)) {
+          this.renderCell(row, col, key);
+        } else if (!this.renderedCells.has(key)) {
           this.renderCell(row, col, key);
         }
       }
     }
+
+    // Pinned columns: repositioned sticky each pass, re-rendered only for
+    // newly-visible rows (see renderPinnedColumns).
+    this.renderPinnedColumns(range.startRow, range.endRow, activeKeys, false);
 
     // Release cells no longer visible
     this.pool.releaseExcept(activeKeys);
@@ -216,14 +325,23 @@ export class CellPositioner implements ICellPositioner {
     const startRow = Math.min(this.lastRange.startRow, endRow);
     const startCol = Math.min(this.lastRange.startCol, endCol);
 
+    const clamped = { startRow, endRow, startCol, endCol };
+    this.computeSpans(clamped);
+    this.computeColPin();
+    this.rowStyleCache.clear();
+
     const activeKeys = new Set<string>();
     for (let row = startRow; row < endRow; row++) {
       for (let col = startCol; col < endCol; col++) {
+        if (this.spanInfo.size > 0 && this.isCovered(row, col)) continue;
+        if (this.colPin && this.colPin.sideOf(col)) continue;
         const key = this.getCellKey(row, col);
         activeKeys.add(key);
         this.renderCell(row, col, key);
       }
     }
+
+    this.renderPinnedColumns(startRow, endRow, activeKeys, true);
 
     this.pool.releaseExcept(activeKeys);
     for (const key of this.renderedCells.keys()) {
@@ -232,7 +350,7 @@ export class CellPositioner implements ICellPositioner {
       }
     }
 
-    this.lastRange = { startRow, endRow, startCol, endCol };
+    this.lastRange = clamped;
   }
 
   /**
@@ -281,7 +399,12 @@ export class CellPositioner implements ICellPositioner {
     this.lastRange = null;
   }
 
-  private renderCell(row: number, col: number, key: string): void {
+  private renderCell(
+    row: number,
+    col: number,
+    key: string,
+    pinSide?: 'left' | 'right'
+  ): void {
     const element = this.pool.acquire(key);
     if (!element.classList.contains('zg-cell')) {
       element.classList.add('zg-cell');
@@ -298,11 +421,21 @@ export class CellPositioner implements ICellPositioner {
     // Because offsets are prefix sums (offset(c) + width(c) === offset(c+1)), snapping
     // the left/right edges independently keeps neighbours exactly flush: no gaps or
     // overlaps, and it stays correct through column resizing and row-height changes.
+    // Row-span anchors are drawn as one tall cell whose height sums the covered
+    // rows below; the covered cells themselves are skipped in the render loop.
+    const span = this.spanAt(row, col);
+    let spannedHeight = position.height;
+    if (span > 1) {
+      spannedHeight = 0;
+      const end = row + span;
+      for (let r = row; r < end; r++) spannedHeight += this.scroller.getRowHeight(r);
+    }
+
     const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
     const left = Math.round(position.x * dpr) / dpr;
     const top = Math.round(position.y * dpr) / dpr;
     const width = Math.round((position.x + position.width) * dpr) / dpr - left;
-    const height = Math.round((position.y + position.height) * dpr) / dpr - top;
+    const height = Math.round((position.y + spannedHeight) * dpr) / dpr - top;
 
     // Position the cell using batched style updates (cssText) to prevent layout thrashing
     // This is critical for scroll performance - individual style.property assignments
@@ -321,6 +454,33 @@ export class CellPositioner implements ICellPositioner {
     element.setAttribute('data-row', row.toString());
     element.setAttribute('data-col', col.toString());
     element.classList.toggle('zg-cell-last-col', col === this.scroller.colCount - 1);
+    element.classList.toggle('zg-cell-row-span', span > 1);
+
+    // Frozen column: place the cell at its band-local offset inside the sticky
+    // pin band and re-parent it there. The band's CSS `position: sticky` freezes
+    // it horizontally on the compositor (no scroll listener, no wobble) and its
+    // z-index paints it above the scrolling body. A recycled cell that is no
+    // longer pinned drops the marker and moves back to the scrolling container.
+    if (pinSide && this.colPin) {
+      const bandLeft = this.colPin.bandLeft(col);
+      element.style.left = `${Math.round(bandLeft * dpr) / dpr}px`;
+      const band = pinSide === 'left' ? this.pinLeftBand : this.pinRightBand;
+      if (band && element.parentNode !== band) band.appendChild(element);
+      element.classList.add('zg-cell-pinned-col');
+      element.classList.toggle('zg-cell-pinned-col-left', pinSide === 'left');
+      element.classList.toggle('zg-cell-pinned-col-right', pinSide === 'right');
+    } else {
+      if (element.classList.contains('zg-cell-pinned-col')) {
+        element.classList.remove(
+          'zg-cell-pinned-col',
+          'zg-cell-pinned-col-left',
+          'zg-cell-pinned-col-right'
+        );
+      }
+      if (this.cellsContainer && element.parentNode !== this.cellsContainer) {
+        this.cellsContainer.appendChild(element);
+      }
+    }
 
     // Get renderer - handle both string names and renderer instances
     let renderer: any;
@@ -402,6 +562,7 @@ export class CellPositioner implements ICellPositioner {
         // Apply overflow mode class (from column config) - even for cached content
         this.applyOverflowClass(element, column);
         this.applyAlignClass(element, column);
+        this.applyRowStyle(element, row);
 
         // CRITICAL: Measure row height even for cached content
         // Cached content still needs height measurement for auto-height columns
@@ -480,6 +641,7 @@ export class CellPositioner implements ICellPositioner {
     // Apply overflow mode class (from column config)
     this.applyOverflowClass(element, column);
     this.applyAlignClass(element, column);
+    this.applyRowStyle(element, row);
 
     // Measure row height if needed (after rendering is complete)
     this.measureRowIfNeeded(row, col, element);
@@ -633,6 +795,55 @@ export class CellPositioner implements ICellPositioner {
   }
 
   /**
+   * Apply the row-level classes/inline-styles for a cell's row. There is no
+   * per-row DOM node, so a row's styling is stamped onto each of its cells here,
+   * right after the column-level classes. Results are memoized per render pass,
+   * and the classes/props applied to a pooled element are tracked so a recycled
+   * cell is stripped of the previous row's styling before the new row's is set.
+   */
+  private applyRowStyle(element: HTMLElement, row: number): void {
+    // Strip styling this pooled element carried from a prior row.
+    const prev = this.appliedRowStyle.get(element);
+    if (prev) {
+      if (prev.classes.length > 0) element.classList.remove(...prev.classes);
+      for (const prop of prev.props) element.style.removeProperty(prop);
+      this.appliedRowStyle.delete(element);
+    }
+
+    if (!this.rowStyleProvider) {
+      return;
+    }
+
+    let result = this.rowStyleCache.get(row);
+    if (result === undefined) {
+      result =
+        this.rowStyleProvider.getRowStyle(row, {
+          getRowData: (r) => this.getRowData?.(r),
+          rowCount: this.scroller.rowCount,
+        }) ?? null;
+      this.rowStyleCache.set(row, result);
+    }
+    if (!result) {
+      return;
+    }
+
+    const classes = result.classes ?? [];
+    if (classes.length > 0) element.classList.add(...classes);
+
+    const props: string[] = [];
+    if (result.style) {
+      for (const [prop, val] of Object.entries(result.style)) {
+        element.style.setProperty(prop, val);
+        props.push(prop);
+      }
+    }
+
+    if (classes.length > 0 || props.length > 0) {
+      this.appliedRowStyle.set(element, { classes: [...classes], props });
+    }
+  }
+
+  /**
    * Snapshot the inline style properties currently set on the cell element.
    * Used to diff against the post-render state so renderer-applied styles can
    * be cached and restored on cache hits.
@@ -669,5 +880,36 @@ export class CellPositioner implements ICellPositioner {
 
   private getCellKey(row: number, col: number): string {
     return `${row}-${col}`;
+  }
+
+  /**
+   * Recompute the row-span layout for the range from the injected provider. No
+   * provider (the default build) means no spanning, so the common path pays
+   * nothing. Cleared and rebuilt each pass because spans are window-local, and
+   * columns that yield no anchors are dropped.
+   */
+  private computeSpans(range: VisibleRange): void {
+    this.spanInfo.clear();
+    if (!this.spanProvider) return;
+    const spans = this.spanProvider.getSpans(range, {
+      getColumn: (col) => this.getColumn?.(col),
+      getData: (row, col) => this.getData(row, col),
+      rowCount: this.scroller.rowCount,
+    });
+    for (const [col, info] of spans) {
+      if (info.anchorSpan.size > 0) {
+        this.spanInfo.set(col, info);
+      }
+    }
+  }
+
+  /** Whether a cell is hidden under a row-span anchor above it. */
+  private isCovered(row: number, col: number): boolean {
+    return this.spanInfo.get(col)?.covered.has(row) ?? false;
+  }
+
+  /** How many rows the cell at (row, col) spans (1 = no span). */
+  private spanAt(row: number, col: number): number {
+    return this.spanInfo.get(col)?.anchorSpan.get(row) ?? 1;
   }
 }

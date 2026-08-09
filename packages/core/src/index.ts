@@ -52,6 +52,52 @@ export { CellPool } from './rendering/cell-pool';
 export type { CellPositionerOptions } from './rendering/cell-positioner';
 export { CellPositioner } from './rendering/cell-positioner';
 
+// Rendering - Row spanning (provider hook; enterprise supplies the implementation)
+export type {
+  RowSpanProvider,
+  RowSpanContext,
+  ColumnSpanInfo,
+} from './rendering/row-span/row-span';
+
+// Rendering - Row pinning (provider hook; enterprise supplies the implementation)
+export type {
+  RowPinProvider,
+  RowPinContext,
+  RowPinLayout,
+  RowPinPosition,
+  PinnedDataRow,
+} from './rendering/row-pin/row-pin';
+export { PinnedRowsRenderer } from './rendering/row-pin/pinned-rows-renderer';
+export type { PinnedRowsRendererOptions } from './rendering/row-pin/pinned-rows-renderer';
+
+// Rendering - Row styling (provider hook; enterprise supplies the implementation)
+export type {
+  RowStyleProvider,
+  RowStyleContext,
+  RowStyleResult,
+} from './rendering/row-style/row-style';
+
+// Rendering - Column pinning (provider hook; enterprise supplies the implementation)
+export type {
+  ColumnPinProvider,
+  ColumnPinContext,
+  ColumnPinInfo,
+  ColumnPinLayout,
+  ResolvedColumnPin,
+} from './rendering/col-pin/col-pin';
+export { resolveColumnPin } from './rendering/col-pin/col-pin';
+
+// Rendering - Column groups (provider hook; enterprise supplies the implementation)
+export type {
+  ColumnGroupProvider,
+  ColumnGroupContext,
+  ColumnGroupInfo,
+  ColumnGroupCell,
+  ColumnGroupLayout,
+  ResolvedGroupCell,
+} from './rendering/col-group/col-group';
+export { resolveColumnGroupCells } from './rendering/col-group/col-group';
+
 // Rendering - Renderers
 export type { CellRenderer, RenderParams } from './rendering/renderers';
 export {

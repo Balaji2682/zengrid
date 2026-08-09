@@ -23,7 +23,7 @@ export interface ColumnResizeOptions {
   widthProvider?: WidthProvider;
 
   /** Total number of columns */
-  colCount: number;
+  colCount: number | (() => number);
 
   /** Get column offset (x position) */
   getColOffset: (col: number) => number;

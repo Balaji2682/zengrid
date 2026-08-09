@@ -8,6 +8,21 @@ import type { CellEditor } from '../editing/cell-editor.interface';
 import type { CellOverflowConfig } from './grid';
 
 /**
+ * Arguments to a column's `valueGetter` — the current row plus a helper to read
+ * sibling fields, so a column can derive its value from the rest of the row.
+ */
+export interface ValueGetterParams {
+  /** Display row index. */
+  row: number;
+  /** This column's field. */
+  field: string;
+  /** The raw source row (as passed to `setData`). */
+  data: unknown;
+  /** Read another column's value in this row by its `field`. */
+  getValue: (field: string) => unknown;
+}
+
+/**
  * Column definition
  */
 export interface ColumnDef {
@@ -48,6 +63,22 @@ export interface ColumnDef {
   maxWidth?: number; // Maximum width constraint
 
   /**
+   * Freeze this column to the left or right edge so it stays in view while the
+   * other columns scroll horizontally. Declarative marker only — it does nothing
+   * on its own; a `colPinProvider` (see `@zengrid/enterprise`'s `columnPinning()`)
+   * must be set on the grid to read it and drive the frozen layout.
+   */
+  pinned?: 'left' | 'right' | null;
+
+  /**
+   * Derive this column's displayed value from the row instead of reading it
+   * positionally from the data — e.g. a `total` from `price × quantity`. When set,
+   * the grid calls this instead of the positional lookup. Declarative hook only;
+   * `@zengrid/enterprise`'s `calculatedColumn()` builds a license-gated one.
+   */
+  valueGetter?: (params: ValueGetterParams) => unknown;
+
+  /**
    * Cell overflow configuration for this column
    * Overrides global cellOverflow setting from GridOptions
    */
@@ -74,7 +105,42 @@ export interface ColumnDef {
    * @default false
    */
   affectsRowHeight?: boolean;
+
+  /**
+   * Row spanning: merge this column's cell at `rowIndex` with the following rows
+   * into a single tall cell. Return the number of rows the cell should span
+   * (1 = no span). Typically used to group runs of a repeated value.
+   *
+   * Called once per anchor row within the rendered window only, so it stays fast
+   * at large row counts. Rows covered by an anchor above are not rendered.
+   *
+   * @example
+   * rowSpan: ({ value, rowIndex, getValue }) => {
+   *   let span = 1;
+   *   while (getValue(rowIndex + span) === value) span++;
+   *   return span;
+   * }
+   */
+  rowSpan?: RowSpanResolver;
 }
+
+/**
+ * Parameters passed to a column's {@link ColumnDef.rowSpan} resolver.
+ */
+export interface RowSpanParams {
+  /** Value of the anchor cell — this column at `rowIndex`. */
+  value: unknown;
+  /** Absolute row index of the anchor cell being measured. */
+  rowIndex: number;
+  /** Read this column's value at any absolute row, for looking ahead/behind. */
+  getValue: (row: number) => unknown;
+}
+
+/**
+ * Returns how many rows a cell spans in its column (1 = no span). See
+ * {@link ColumnDef.rowSpan}.
+ */
+export type RowSpanResolver = (params: RowSpanParams) => number;
 
 /**
  * Sort icons configuration

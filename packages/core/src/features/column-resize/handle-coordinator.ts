@@ -9,7 +9,6 @@ export class HandleCoordinator {
   constructor(
     private dataSource: ResizableDataSource,
     private stateManager: ResizeStateManager,
-    private getScrollLeft: () => number,
     private getHeaderHeight: () => number
   ) {}
 
@@ -31,16 +30,19 @@ export class HandleCoordinator {
       visibleCols.push(col);
     }
 
-    const scrollLeft = this.getScrollLeft();
     // Use header height for resize handles, not viewport height
     // This prevents handles from extending down into the grid body
     const headerHeight = this.getHeaderHeight();
 
+    // Handles live inside the header-cells container, which is itself
+    // translated by -scrollLeft. Position them in content space (scrollLeft 0)
+    // and let that translate apply the scroll — subtracting scrollLeft here as
+    // well would double-count it and mis-place handles after a scrolled resize.
     handleRenderer.updateHandles(
       visibleCols,
       (col) => this.dataSource.getColumnOffset(col),
       (col) => this.dataSource.getColumnWidth(col),
-      scrollLeft,
+      0,
       headerHeight
     );
   }

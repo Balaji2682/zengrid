@@ -177,6 +177,65 @@ describe('CellPositioner', () => {
     cachedPositioner.destroy();
   });
 
+  it('should stamp row classes and inline styles onto every cell of a styled row', () => {
+    const styled = new CellPositioner({
+      scroller,
+      pool,
+      registry,
+      getData: (row, col) => data[row][col],
+      rowStyleProvider: {
+        getRowStyle: (row) =>
+          row === 2
+            ? { classes: ['zg-row-flagged'], style: { 'background-color': 'rgb(1, 2, 3)' } }
+            : undefined,
+      },
+    });
+
+    styled.renderVisibleCells(0, 0);
+
+    // Both cells of the styled row carry the class and inline style.
+    for (const key of ['2-0', '2-1']) {
+      const cell = pool.acquire(key);
+      expect(cell.classList.contains('zg-row-flagged')).toBe(true);
+      expect(cell.style.backgroundColor).toBe('rgb(1, 2, 3)');
+    }
+
+    // An unstyled row is untouched.
+    const plain = pool.acquire('1-0');
+    expect(plain.classList.contains('zg-row-flagged')).toBe(false);
+    expect(plain.style.backgroundColor).toBe('');
+
+    styled.destroy();
+  });
+
+  it('should strip a row style when the provider stops styling that row', () => {
+    let flagRow2 = true;
+    const styled = new CellPositioner({
+      scroller,
+      pool,
+      registry,
+      getData: (row, col) => data[row][col],
+      rowStyleProvider: {
+        getRowStyle: (row) =>
+          row === 2 && flagRow2
+            ? { classes: ['zg-row-flagged'], style: { 'background-color': 'rgb(1, 2, 3)' } }
+            : undefined,
+      },
+    });
+
+    styled.renderVisibleCells(0, 0);
+    expect(pool.acquire('2-0').classList.contains('zg-row-flagged')).toBe(true);
+
+    flagRow2 = false;
+    styled.refresh();
+
+    const cell = pool.acquire('2-0');
+    expect(cell.classList.contains('zg-row-flagged')).toBe(false);
+    expect(cell.style.backgroundColor).toBe('');
+
+    styled.destroy();
+  });
+
   it('should destroy and cleanup', () => {
     positioner.renderVisibleCells(0, 0);
     positioner.destroy();

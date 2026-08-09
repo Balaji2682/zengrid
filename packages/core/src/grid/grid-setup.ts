@@ -38,7 +38,10 @@ export function createSlimContext(container: HTMLElement, options: GridOptions):
   if (!normalizedOptions.rowCount || normalizedOptions.rowCount <= 0)
     normalizedOptions.rowCount = 0;
   if (!normalizedOptions.colCount || normalizedOptions.colCount <= 0)
-    normalizedOptions.colCount = 0;
+    // Derive the column count from the column definitions when not given
+    // explicitly, so column-keyed features (filtering, export) work without a
+    // redundant colCount alongside `columns`.
+    normalizedOptions.colCount = normalizedOptions.columns?.length ?? 0;
 
   const events = new EventEmitter<GridEvents>();
   const state: GridState = {

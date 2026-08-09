@@ -2,6 +2,10 @@ import type { GridPlugin, PluginDisposable } from '../../reactive/types';
 import type { GridOptions } from '../../types';
 import { Paginator } from '../../features/pagination';
 import { resolveQueryExecutionMode } from '../../grid/query-mode';
+import { resolveHeaderHeight } from '../header/header-types';
+
+/** Vertical space reserved for a rendered pagination bar. */
+const PAGINATION_BAR_HEIGHT = 56;
 
 export interface PaginationPluginOptions {
   options: GridOptions;
@@ -70,6 +74,70 @@ export function createPaginationPlugin(opts: PaginationPluginOptions): GridPlugi
 
       let paginationTop: HTMLElement | null = null;
       let paginationBottom: HTMLElement | null = null;
+      let scrollContainerEl: HTMLElement | null = null;
+      let headerHeightPx = 0;
+
+      // Create the bar's host element(s) inside the grid DOM and reserve layout
+      // space for them by insetting the scroll container. Runs once; a host that
+      // called `setContainers` itself keeps its own containers (early return).
+      function ensureContainers(): void {
+        if (paginationTop || paginationBottom) return;
+
+        const viewport = api.getMethod('dom', 'getViewport')?.() as HTMLElement | null | undefined;
+        const scrollContainer = api
+          .getMethod('dom', 'getScrollContainer')
+          ?.() as HTMLElement | null | undefined;
+        if (!viewport || !scrollContainer) return;
+
+        scrollContainerEl = scrollContainer;
+        const position = options.pagination?.position ?? 'bottom';
+        headerHeightPx =
+          options.columns && options.columns.length > 0 ? resolveHeaderHeight(options) : 0;
+
+        const makeHost = (): HTMLElement => {
+          const host = document.createElement('div');
+          host.className = 'zg-pagination-host';
+          host.style.cssText = `position:absolute;left:0;right:0;height:${PAGINATION_BAR_HEIGHT}px;z-index:9;overflow:hidden;`;
+          viewport.appendChild(host);
+          return host;
+        };
+
+        if (position === 'top' || position === 'both') {
+          paginationTop = makeHost();
+          paginationTop.style.top = `${headerHeightPx}px`;
+          scrollContainer.style.top = `${headerHeightPx + PAGINATION_BAR_HEIGHT}px`;
+        }
+        if (position === 'bottom' || position === 'both') {
+          paginationBottom = makeHost();
+          paginationBottom.style.bottom = '0';
+          scrollContainer.style.bottom = `${PAGINATION_BAR_HEIGHT}px`;
+        }
+      }
+
+      // Size each host to its bar's real height and inset the scroll container to
+      // match. The bar wraps to multiple rows in narrow grids, so a fixed reserve
+      // would clip it; measuring keeps every control visible. PAGINATION_BAR_HEIGHT
+      // is the floor so single-row bars keep their comfortable height.
+      function reflowContainers(): void {
+        if (!scrollContainerEl) return;
+
+        const measure = (host: HTMLElement | null): number => {
+          const bar = host?.firstElementChild as HTMLElement | null;
+          if (!bar) return PAGINATION_BAR_HEIGHT;
+          return Math.max(PAGINATION_BAR_HEIGHT, Math.ceil(bar.getBoundingClientRect().height));
+        };
+
+        if (paginationTop) {
+          const h = measure(paginationTop);
+          paginationTop.style.height = `${h}px`;
+          scrollContainerEl.style.top = `${headerHeightPx + h}px`;
+        }
+        if (paginationBottom) {
+          const h = measure(paginationBottom);
+          paginationBottom.style.height = `${h}px`;
+          scrollContainerEl.style.bottom = `${h}px`;
+        }
+      }
 
       function getTotalPages(): number {
         const pageSize = store.get('pagination.pageSize') as number;
@@ -91,6 +159,7 @@ export function createPaginationPlugin(opts: PaginationPluginOptions): GridPlugi
       }
 
       function updatePaginationUI(): void {
+        ensureContainers();
         validateAndClamp();
 
         const currentPage = store.get('pagination.currentPage') as number;
@@ -134,6 +203,8 @@ export function createPaginationPlugin(opts: PaginationPluginOptions): GridPlugi
           paginationBottom.innerHTML = '';
           paginationBottom.appendChild(paginationElement);
         }
+
+        reflowContainers();
       }
 
       store.action(

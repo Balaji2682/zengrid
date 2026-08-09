@@ -1,6 +1,6 @@
 import type { GridPlugin, PluginDisposable } from '../../reactive/types';
 import type { GridOptions } from '../../types';
-import { resolveHeaderHeight } from '../header/header-types';
+import { resolveTotalHeaderHeight } from '../header/header-types';
 
 export interface DomPluginOptions {
   container: HTMLElement;
@@ -25,11 +25,15 @@ export function createDomPlugin(opts: DomPluginOptions): GridPlugin {
       let scrollContainer: HTMLElement | null = null;
       let canvas: HTMLElement | null = null;
       let headerContainer: HTMLElement | null = null;
+      let pinnedTop: HTMLElement | null = null;
+      let pinnedBottom: HTMLElement | null = null;
 
       store.extend('dom.viewport', null as HTMLElement | null, 'dom', 5);
       store.extend('dom.scrollContainer', null as HTMLElement | null, 'dom', 5);
       store.extend('dom.canvas', null as HTMLElement | null, 'dom', 5);
       store.extend('dom.headerContainer', null as HTMLElement | null, 'dom', 5);
+      store.extend('dom.pinnedTop', null as HTMLElement | null, 'dom', 5);
+      store.extend('dom.pinnedBottom', null as HTMLElement | null, 'dom', 5);
 
       store.action(
         'dom:setup',
@@ -52,8 +56,10 @@ export function createDomPlugin(opts: DomPluginOptions): GridPlugin {
           scrollContainer = document.createElement('div');
           scrollContainer.className = 'zg-scroll-container';
 
+          // Total header area — includes grouped-header banner rows when a
+          // colGroupProvider is set (0 rows otherwise, so the default is unchanged).
           const headerHeight =
-            options.columns && options.columns.length > 0 ? resolveHeaderHeight(options) : 0;
+            options.columns && options.columns.length > 0 ? resolveTotalHeaderHeight(options) : 0;
 
           scrollContainer.style.cssText = `
             position: absolute;
@@ -91,14 +97,55 @@ export function createDomPlugin(opts: DomPluginOptions): GridPlugin {
 
           // Assemble DOM
           canvas.appendChild(cellsContainer);
+
+          // Frozen-column bands. Each is a CSS `position: sticky` container living
+          // inside the scrolled canvas: `left`/`right` insets (no `top`) freeze it
+          // horizontally on the compositor while it scrolls vertically with the
+          // rows — zero per-frame JS, no wobble. `height: 0`/`width: 0` keep them
+          // out of flow so they don't inflate the canvas scroll height. Created
+          // only when a colPinProvider is set, so the default build is untouched.
+          if (options.colPinProvider) {
+            const pinLeft = document.createElement('div');
+            pinLeft.className = 'zg-pin-left';
+            pinLeft.style.cssText =
+              'position: sticky; left: 0; height: 0; width: 0; z-index: 3; pointer-events: auto;';
+
+            const pinRight = document.createElement('div');
+            pinRight.className = 'zg-pin-right';
+            pinRight.style.cssText =
+              'position: sticky; right: 0; float: right; height: 0; width: 0; z-index: 3; pointer-events: auto;';
+
+            canvas.appendChild(pinLeft);
+            canvas.appendChild(pinRight);
+          }
+
           scrollContainer.appendChild(canvas);
           viewport.appendChild(scrollContainer);
+
+          // Pinned-row bands overlay the scroll area, fixed vertically while the
+          // body scrolls beneath them. Created only when a pin provider is set so
+          // the default build is untouched.
+          if (options.pinProvider) {
+            pinnedTop = document.createElement('div');
+            pinnedTop.className = 'zg-pinned-top';
+            pinnedTop.style.cssText = `position: absolute; top: ${headerHeight}px; left: 0; right: 0; overflow: hidden; display: none;`;
+
+            pinnedBottom = document.createElement('div');
+            pinnedBottom.className = 'zg-pinned-bottom';
+            pinnedBottom.style.cssText = 'position: absolute; bottom: 0; left: 0; right: 0; overflow: hidden; display: none;';
+
+            viewport.appendChild(pinnedTop);
+            viewport.appendChild(pinnedBottom);
+          }
+
           container.appendChild(viewport);
 
           store.set('dom.viewport', viewport);
           store.set('dom.scrollContainer', scrollContainer);
           store.set('dom.canvas', canvas);
           store.set('dom.headerContainer', headerContainer);
+          store.set('dom.pinnedTop', pinnedTop);
+          store.set('dom.pinnedBottom', pinnedBottom);
         },
         'dom'
       );
@@ -141,10 +188,14 @@ export function createDomPlugin(opts: DomPluginOptions): GridPlugin {
           canvas = null;
           scrollContainer = null;
           headerContainer = null;
+          pinnedTop = null;
+          pinnedBottom = null;
           store.set('dom.viewport', null);
           store.set('dom.scrollContainer', null);
           store.set('dom.canvas', null);
           store.set('dom.headerContainer', null);
+          store.set('dom.pinnedTop', null);
+          store.set('dom.pinnedBottom', null);
         },
         'dom'
       );
@@ -159,6 +210,8 @@ export function createDomPlugin(opts: DomPluginOptions): GridPlugin {
         getScrollContainer: () => store.get('dom.scrollContainer'),
         getCanvas: () => store.get('dom.canvas'),
         getHeaderContainer: () => store.get('dom.headerContainer'),
+        getPinnedTop: () => store.get('dom.pinnedTop'),
+        getPinnedBottom: () => store.get('dom.pinnedBottom'),
         getCellsContainer: () =>
           (store.get('dom.canvas') as HTMLElement | null)?.querySelector('.zg-cells') || null,
       });
@@ -171,6 +224,8 @@ export function createDomPlugin(opts: DomPluginOptions): GridPlugin {
             canvas = null;
             scrollContainer = null;
             headerContainer = null;
+            pinnedTop = null;
+            pinnedBottom = null;
           },
         ],
       };

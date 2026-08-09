@@ -5,7 +5,7 @@ import type { ResizableDataSource } from './column-resize-manager.interface';
  */
 export class DataSourceAdapter implements ResizableDataSource {
   constructor(
-    private colCount: number,
+    private colCount: number | (() => number),
     private getColOffset: (col: number) => number,
     private getColWidth: (col: number) => number,
     private setColWidth: (col: number, width: number) => void,
@@ -14,7 +14,9 @@ export class DataSourceAdapter implements ResizableDataSource {
   ) {}
 
   getColumnCount(): number {
-    return this.colCount;
+    // May be a getter so the count stays live as columns are shown/hidden —
+    // a stale snapshot makes handle updates read an out-of-range column width.
+    return typeof this.colCount === 'function' ? this.colCount() : this.colCount;
   }
 
   getColumnOffset(col: number): number {

@@ -26,6 +26,8 @@ import {
   type StateApi,
   createExportApi,
   type ExportApi,
+  createRowsApi,
+  type RowsApi,
 } from './api';
 
 export class Zengrid {
@@ -40,6 +42,7 @@ export class Zengrid {
   readonly scroll: ScrollApi;
   readonly state: StateApi;
   readonly export: ExportApi;
+  readonly rows: RowsApi;
 
   constructor(container: HTMLElement, options: GridOptions) {
     this.ctx = createSlimContext(container, options);
@@ -54,6 +57,7 @@ export class Zengrid {
     this.columns = createColumnApi(this.ctx);
     this.scroll = createScrollApi(this.ctx);
     this.export = createExportApi(this.ctx, () => (this.ctx as any)._getDataAccessor?.());
+    this.rows = createRowsApi(this.ctx, () => (this.ctx as any)._getDataAccessor?.());
 
     // state depends on sort + filter
     this.state = createStateApi(this.ctx, this.sort, this.filter);
@@ -348,8 +352,6 @@ export class Zengrid {
   attachColumnDrag = (h: HTMLElement) => this.columns.attachDrag(h);
   detachColumnDrag = () => this.columns.detachDrag();
   isDragging = () => this.columns.isDragging();
-  getColumnState = () => this.columns.getState();
-  applyColumnState = (s: any[], o?: any) => this.columns.applyState(s, o);
 
   scrollToCell = (r: number, c: number) => this.scroll.toCell(r, c);
   scrollThroughCells = (cells: any[], o?: any) => this.scroll.throughCells(cells, o);

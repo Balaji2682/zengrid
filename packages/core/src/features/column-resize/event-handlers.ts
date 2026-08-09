@@ -90,11 +90,14 @@ export class EventHandlers {
    * Handle mouse move for cursor and resize drag
    */
   private async handleMouseMove(e: MouseEvent): Promise<void> {
-    const { container, dataSource, stateManager, zoneDetector, handleRenderer, getScrollLeft } =
-      this.config;
+    const { container, dataSource, stateManager, zoneDetector, handleRenderer } = this.config;
 
+    // The container (header cells) is translated by -scrollLeft, so its
+    // rect.left already encodes the horizontal scroll. Converting a screen X to
+    // content space is therefore just `clientX - rect.left` — adding scrollLeft
+    // again would double-count it and break hit-detection while scrolled.
     const rect = container.getBoundingClientRect();
-    const x = e.clientX - rect.left + getScrollLeft();
+    const x = e.clientX - rect.left;
 
     if (stateManager.isActive()) {
       await this.performResize(e.clientX);
@@ -126,12 +129,11 @@ export class EventHandlers {
       previewRenderer,
       isColumnResizable,
       onBeforeResize,
-      getScrollLeft,
       getViewportHeight,
     } = this.config;
 
     const rect = container.getBoundingClientRect();
-    const x = e.clientX - rect.left + getScrollLeft();
+    const x = e.clientX - rect.left;
 
     const zone = zoneDetector.detectZone(x, dataSource);
     if (zone.inResizeZone) {
@@ -163,7 +165,9 @@ export class EventHandlers {
       if (previewRenderer) {
         const colOffset = dataSource.getColumnOffset(zone.column);
         const colWidth = dataSource.getColumnWidth(zone.column);
-        const previewX = colOffset + colWidth - getScrollLeft();
+        // Container-relative content X; the container's own translate applies
+        // the scroll offset, so do not subtract scrollLeft here.
+        const previewX = colOffset + colWidth;
         const previewHeight = getViewportHeight() ?? rect.height;
         previewRenderer.show(previewX, previewHeight);
       }
@@ -237,7 +241,6 @@ export class EventHandlers {
       stateManager,
       previewRenderer,
       onDuringResize,
-      getScrollLeft,
     } = this.config;
 
     const state = stateManager.getState();
@@ -255,7 +258,7 @@ export class EventHandlers {
 
     if (previewRenderer) {
       const colOffset = dataSource.getColumnOffset(state.column);
-      const previewX = colOffset + constrainedWidth - getScrollLeft();
+      const previewX = colOffset + constrainedWidth;
       previewRenderer.update(previewX);
     } else {
       dataSource.setColumnWidth(state.column, constrainedWidth);
@@ -266,12 +269,12 @@ export class EventHandlers {
    * Handle double-click to auto-fit
    */
   private handleDblClick(e: MouseEvent): void {
-    const { container, dataSource, zoneDetector, autoFitCalculator, getScrollLeft } = this.config;
+    const { container, dataSource, zoneDetector, autoFitCalculator } = this.config;
 
     if (!autoFitCalculator) return;
 
     const rect = container.getBoundingClientRect();
-    const x = e.clientX - rect.left + getScrollLeft();
+    const x = e.clientX - rect.left;
 
     const zone = zoneDetector.detectZone(x, dataSource);
     if (zone.inResizeZone) {
@@ -293,13 +296,12 @@ export class EventHandlers {
       stateManager,
       previewRenderer,
       isColumnResizable,
-      getScrollLeft,
       getViewportHeight,
     } = this.config;
 
     const touch = e.touches[0];
     const rect = container.getBoundingClientRect();
-    const x = touch.clientX - rect.left + getScrollLeft();
+    const x = touch.clientX - rect.left;
 
     const zone = zoneDetector.detectZone(x, dataSource);
     if (zone.inResizeZone) {
@@ -312,7 +314,7 @@ export class EventHandlers {
       if (previewRenderer) {
         const colOffset = dataSource.getColumnOffset(zone.column);
         const colWidth = dataSource.getColumnWidth(zone.column);
-        const previewX = colOffset + colWidth - getScrollLeft();
+        const previewX = colOffset + colWidth;
         const previewHeight = getViewportHeight() ?? rect.height;
         previewRenderer.show(previewX, previewHeight);
       }
@@ -336,7 +338,6 @@ export class EventHandlers {
       constraintManager,
       stateManager,
       previewRenderer,
-      getScrollLeft,
     } = this.config;
 
     if (!stateManager.isActive()) return;
@@ -348,7 +349,7 @@ export class EventHandlers {
 
     if (previewRenderer) {
       const colOffset = dataSource.getColumnOffset(state.column);
-      const previewX = colOffset + constrainedWidth - getScrollLeft();
+      const previewX = colOffset + constrainedWidth;
       previewRenderer.update(previewX);
     } else {
       dataSource.setColumnWidth(state.column, constrainedWidth);

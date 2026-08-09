@@ -217,10 +217,15 @@ export class DragVisualFeedback {
    * Create drop indicator element
    */
   private createDropIndicatorIfNeeded(): void {
-    if (this.dropIndicator) return;
-
     const container = this.getHeaderContainer?.();
     if (!container) return;
+
+    // Reuse the cached indicator only while it's still attached to the current
+    // header container. A column reorder rebuilds the header cells
+    // (`headerCellsContainer.innerHTML = ''`), which detaches this element — so a
+    // stale reference here would leave no drop line on every drag after the first
+    // reorder. When that happens, fall through and recreate it.
+    if (this.dropIndicator && this.dropIndicator.parentElement === container) return;
 
     // Check if an indicator already exists in the container to prevent duplicates
     const existingIndicator = container.querySelector('.zg-column-drop-indicator') as HTMLElement;
