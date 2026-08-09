@@ -22,29 +22,57 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm build
+      - run: pnpm exec nx run-many -t build -p shared core @zengrid/angular
 
-      - run: pnpm test
+      - run: pnpm exec nx run-many -t test -p shared core @zengrid/angular --parallel=1
+        env:
+          SKIP_PERF: '1'
 
       - name: Publish @zengrid/shared
-        run: pnpm publish --no-git-checks --access public
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION already published, skipping"
+          else
+            pnpm publish --no-git-checks --access public
+          fi
         working-directory: packages/shared
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @zengrid/core
-        run: pnpm publish --no-git-checks --access public
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION already published, skipping"
+          else
+            pnpm publish --no-git-checks --access public
+          fi
         working-directory: packages/core
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @zengrid/angular
-        run: pnpm publish --no-git-checks --access public
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION already published, skipping"
+          else
+            pnpm publish --no-git-checks --access public
+          fi
         working-directory: dist/angular
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists, skipping"
+          else
+            gh release create "$GITHUB_REF_NAME" --generate-notes
+          fi
         env:
           GH_TOKEN: ${{ github.token }}

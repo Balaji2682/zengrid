@@ -11,6 +11,12 @@ export default {
       },
     ],
   },
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    ...(process.env.SKIP_PERF
+      ? ['/performance/', 'performance\\.spec\\.ts$', 'benchmarks\\.spec\\.ts$', '\\.perf\\.spec\\.ts$']
+      : []),
+  ],
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/packages/shared',
   coverageThreshold: {

@@ -27,7 +27,6 @@ import type {
   CellRange,
   CellRef,
   ColumnDef,
-  ColumnStateSnapshot,
   GridStateSnapshot,
   GridPlugin,
   ColumnConstraints,
@@ -786,17 +785,6 @@ export class ZenGridComponent {
   }
 
   // --- State Persistence API ---
-  getColumnState(): ColumnStateSnapshot[] {
-    return this.grid?.getColumnState() ?? [];
-  }
-
-  applyColumnState(
-    state: ColumnStateSnapshot[],
-    options?: { applyWidth?: boolean; applyVisibility?: boolean; applyOrder?: boolean }
-  ): void {
-    this.grid?.applyColumnState(state, options);
-  }
-
   getStateSnapshot(): GridStateSnapshot | null {
     return this.grid?.getStateSnapshot() ?? null;
   }
