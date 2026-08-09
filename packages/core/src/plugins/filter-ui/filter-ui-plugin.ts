@@ -2,12 +2,14 @@ import type { GridPlugin, PluginDisposable } from '../../reactive/types';
 import { GridFilterUI } from './grid-filter-ui';
 import type { ColumnDef, FilterExpression, FilterModel } from '../../types';
 import type { ColumnModel } from '../../features/columns/column-model';
+import type { FilterPopupCustomization } from './filter-ui-types';
 
 export interface FilterUIPluginOptions {
   getColumns: () => ColumnDef[] | undefined;
   getColumnDef: (dataCol: number) => ColumnDef | undefined;
   getColumnModel: () => ColumnModel | null;
   getContainer: () => HTMLElement;
+  getFilterPopupCustomization?: () => FilterPopupCustomization | undefined;
 }
 
 export function createFilterUIPlugin(options: FilterUIPluginOptions): GridPlugin {
@@ -29,6 +31,7 @@ export function createFilterUIPlugin(options: FilterUIPluginOptions): GridPlugin
             container,
             events,
             columns: options.getColumns(),
+            customization: options.getFilterPopupCustomization?.(),
             getFilterState: () => store.get('filter.state') as FilterModel[],
             getFilterExpression: () => store.get('filter.expression') as FilterExpression | null,
             setColumnFilter: (column, conditions, logic) => {
@@ -71,6 +74,9 @@ export function createFilterUIPlugin(options: FilterUIPluginOptions): GridPlugin
       });
 
       api.register('filterUI', {
+        setCustomization: (customization: FilterPopupCustomization | undefined) => {
+          filterUI?.setCustomization(customization);
+        },
         destroy: () => {
           if (filterUI) {
             filterUI.destroy();

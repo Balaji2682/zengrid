@@ -83,4 +83,18 @@
   --zg-calendar-disabled-text: var(--zg-text-disabled);
   --zg-calendar-shadow: var(--zg-shadow-lg);
   --zg-calendar-radius: 8px;
+
+  /* Filter popup theming variables */
+  --zg-filter-bg: var(--zg-bg-primary);
+  --zg-filter-text: var(--zg-text-primary);
+  --zg-filter-muted: var(--zg-text-secondary);
+  --zg-filter-border: var(--zg-border-color);
+  --zg-filter-radius: 10px;
+  --zg-filter-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.28), 0 2px 6px rgba(0, 0, 0, 0.08);
+  --zg-filter-accent: var(--zg-border-focus);
+  --zg-filter-accent-text: #ffffff;
+  --zg-filter-field-bg: var(--zg-bg-primary);
+  --zg-filter-condition-bg: var(--zg-bg-secondary);
+  --zg-filter-hover-bg: var(--zg-bg-hover);
+  --zg-filter-gap: 10px;
 }

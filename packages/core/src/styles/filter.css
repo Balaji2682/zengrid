@@ -78,42 +78,125 @@
 /* Filter popup */
 .zg-filter-popup {
   position: fixed;
-  min-width: 220px;
-  max-width: 320px;
-  background: var(--zg-bg-color);
-  color: var(--zg-text-color);
-  border: 1px solid var(--zg-border-color);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  padding: 10px;
-  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--zg-filter-gap);
+  min-width: 260px;
+  max-width: 340px;
+  box-sizing: border-box;
+  padding: 14px;
+  background: var(--zg-filter-bg);
+  color: var(--zg-filter-text);
+  border: 1px solid var(--zg-filter-border);
+  border-radius: var(--zg-filter-radius);
+  box-shadow: var(--zg-filter-shadow);
+  font-family: var(--zg-font-family);
   font-size: 13px;
+  line-height: 1.45;
+  z-index: 2000;
+}
+
+.zg-filter-popup__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .zg-filter-popup__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 600;
-  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.zg-filter-popup__close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--zg-filter-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--zg-transition-fast), color var(--zg-transition-fast);
+}
+
+.zg-filter-popup__close:hover {
+  background: var(--zg-filter-hover-bg);
+  color: var(--zg-filter-text);
+}
+
+/* Segmented AND/OR match control */
+.zg-filter-popup__match {
+  display: flex;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--zg-filter-border);
+  border-radius: 7px;
+  background: var(--zg-filter-condition-bg);
+}
+
+.zg-filter-popup__match-btn {
+  flex: 1;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--zg-filter-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--zg-transition-fast), color var(--zg-transition-fast);
+}
+
+.zg-filter-popup__match-btn:hover {
+  color: var(--zg-filter-text);
+}
+
+.zg-filter-popup__match-btn.is-active {
+  background: var(--zg-filter-bg);
+  color: var(--zg-filter-accent);
+  box-shadow: var(--zg-shadow-sm);
 }
 
 .zg-filter-popup__row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: 5px;
+}
+
+.zg-filter-popup__row label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--zg-filter-muted);
 }
 
 .zg-filter-popup__conditions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--zg-filter-gap);
 }
 
 .zg-filter-popup__condition {
-  padding: 6px;
-  border: 1px solid var(--zg-border-color);
-  border-radius: 4px;
-  background: var(--zg-bg-secondary, #f9f9f9);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--zg-filter-border);
+  border-radius: 7px;
+  background: var(--zg-filter-condition-bg);
 }
 
 .zg-filter-popup__condition-actions {
@@ -121,46 +204,177 @@
   justify-content: flex-end;
 }
 
+/* Collapsed condition — a compact one-line summary with an edit affordance.
+   Only the active condition stays expanded; the rest fold to this row. */
+.zg-filter-popup__condition.is-collapsed {
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.zg-filter-popup__condition.is-collapsed .zg-filter-popup__row,
+.zg-filter-popup__condition.is-collapsed .zg-filter-popup__condition-actions {
+  display: none;
+}
+
+.zg-filter-popup__condition-summary {
+  display: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.zg-filter-popup__condition.is-collapsed .zg-filter-popup__condition-summary {
+  display: flex;
+}
+
+.zg-filter-popup__condition-edit {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--zg-filter-border);
+  border-radius: 6px;
+  background: var(--zg-filter-condition-bg);
+  color: var(--zg-filter-text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--zg-transition-fast), border-color var(--zg-transition-fast);
+}
+
+.zg-filter-popup__condition-edit:hover {
+  border-color: var(--zg-filter-accent);
+  background: var(--zg-filter-hover-bg);
+}
+
+.zg-filter-popup__condition-edit svg {
+  flex-shrink: 0;
+  color: var(--zg-filter-muted);
+}
+
+.zg-filter-popup__condition-summary-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.zg-filter-popup__condition-summary-remove {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--zg-filter-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--zg-transition-fast), color var(--zg-transition-fast);
+}
+
+.zg-filter-popup__condition-summary-remove:hover {
+  background: var(--zg-filter-hover-bg);
+  color: var(--zg-text-negative);
+}
+
 .zg-filter-popup__select,
 .zg-filter-popup__input {
   width: 100%;
-  padding: 6px 8px;
-  border: 1px solid var(--zg-border-color);
-  border-radius: 4px;
-  background: var(--zg-bg-color);
-  color: var(--zg-text-color);
+  padding: 7px 9px;
+  border: 1px solid var(--zg-filter-border);
+  border-radius: 6px;
+  background: var(--zg-filter-field-bg);
+  color: var(--zg-filter-text);
+  font: inherit;
   font-size: 13px;
   box-sizing: border-box;
+  transition: border-color var(--zg-transition-fast), box-shadow var(--zg-transition-fast);
+}
+
+.zg-filter-popup__select:hover,
+.zg-filter-popup__input:hover {
+  border-color: var(--zg-filter-accent);
+}
+
+.zg-filter-popup__select:focus-visible,
+.zg-filter-popup__input:focus-visible {
+  outline: none;
+  border-color: var(--zg-filter-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--zg-filter-accent) 30%, transparent);
+}
+
+/* Custom select chrome — drop the native OS dropdown arrow for a themed caret */
+.zg-filter-popup__select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='16'%20height='16'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2364748b'%20stroke-width='2.2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='m6%209%206%206%206-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 15px;
+  cursor: pointer;
+}
+
+.zg-filter-popup__select::-ms-expand {
+  display: none;
 }
 
 .zg-filter-popup__actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+  padding-top: var(--zg-filter-gap);
+  border-top: 1px solid var(--zg-filter-border);
 }
 
 .zg-filter-popup__btn {
-  padding: 6px 10px;
-  border: 1px solid var(--zg-border-color);
-  background: var(--zg-header-bg);
-  color: var(--zg-header-text);
-  border-radius: 4px;
-  cursor: pointer;
+  padding: 7px 14px;
+  border: 1px solid var(--zg-filter-border);
+  background: var(--zg-filter-field-bg);
+  color: var(--zg-filter-text);
+  border-radius: 6px;
+  font: inherit;
   font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--zg-transition-fast), border-color var(--zg-transition-fast);
+}
+
+.zg-filter-popup__btn:hover {
+  background: var(--zg-filter-hover-bg);
+  border-color: var(--zg-filter-accent);
 }
 
 .zg-filter-popup__btn--add {
   width: 100%;
-  margin-bottom: 8px;
+  color: var(--zg-filter-accent);
+  border-style: dashed;
 }
 
 .zg-filter-popup__btn--remove {
-  padding: 4px 8px;
+  padding: 4px 10px;
   font-size: 11px;
+  color: var(--zg-text-negative);
 }
 
 .zg-filter-popup__btn.primary {
-  background: var(--zg-selected-border);
-  border-color: var(--zg-selected-border);
-  color: #fff;
+  background: var(--zg-filter-accent);
+  border-color: var(--zg-filter-accent);
+  color: var(--zg-filter-accent-text);
+}
+
+.zg-filter-popup__btn.primary:hover {
+  background: color-mix(in srgb, var(--zg-filter-accent) 88%, black);
+  border-color: color-mix(in srgb, var(--zg-filter-accent) 88%, black);
 }

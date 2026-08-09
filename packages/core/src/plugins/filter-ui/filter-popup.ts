@@ -1,61 +1,123 @@
 import type { FilterOperator } from '../../types';
 import type { FilterPopupHandle, FilterPopupOptions } from './filter-ui-types';
 import { buildCondition, getOperatorsForType } from './filter-ui-operators';
+import { applyTokens, createPartApplier } from './filter-popup-customize';
 import {
   createActions,
   createButton,
-  createConditionRow,
-  createLogicRow,
-  createTitle,
+  createHeader,
+  createMatchControl,
   positionUnanchoredPopup,
-  type ConditionRow,
 } from './filter-popup-dom';
+import { createConditionRow, type ConditionRow } from './filter-condition-row';
 
 export function openFilterPopup(options: FilterPopupOptions): FilterPopupHandle {
   const dropdownType = options.payload.dropdownType ?? 'text';
   const operators = getOperatorsForType(dropdownType);
+  const applyPart = createPartApplier(options.customization, {
+    columnDef: options.columnDef,
+    dataCol: options.dataCol,
+  });
+
   const popup = document.createElement('div');
   popup.className = 'zg-filter-popup';
-  popup.appendChild(createTitle(options));
+  applyPart('popup', popup);
+  applyTokens(popup, options.customization?.tokens);
 
-  const logicRow = createLogicRow(options.existing?.logic ?? 'AND');
-  popup.appendChild(logicRow.row);
+  const header = createHeader(options, applyPart);
+  popup.appendChild(header.header);
+
+  const matchControl = createMatchControl(options.existing?.logic ?? 'AND', applyPart);
+  popup.appendChild(matchControl.row);
 
   const conditionsContainer = document.createElement('div');
   conditionsContainer.className = 'zg-filter-popup__conditions';
-  popup.appendChild(conditionsContainer);
+  popup.appendChild(applyPart('conditions', conditionsContainer));
 
   const conditionRows: ConditionRow[] = [];
+  let activeRow: ConditionRow | null = null;
+
   const updateConditionControls = () => {
     const showLogic = conditionRows.length > 1;
-    logicRow.row.style.display = showLogic ? '' : 'none';
+    matchControl.row.style.display = showLogic ? '' : 'none';
     conditionRows.forEach((row) => {
       row.removeBtn.style.display = showLogic ? '' : 'none';
     });
   };
 
-  const addCondition = (condition?: { operator: string; value?: any }) => {
-    const row = createConditionRow(condition, operators, dropdownType, () => {
-      const index = conditionRows.findIndex((item) => item.element === row.element);
-      if (index >= 0) conditionRows.splice(index, 1);
-      row.element.remove();
+  const focusRow = (row: ConditionRow | null) => {
+    if (!row) return;
+    if (row.valueInput.style.display !== 'none') row.valueInput.focus();
+    else row.operatorSelect.focus();
+  };
+
+  // Accordion: exactly one row is expanded (the "active" one); the rest collapse
+  // to a one-line summary so stacking conditions stays compact. A lone row never
+  // collapses.
+  const expand = (row: ConditionRow) => {
+    activeRow = row;
+    conditionRows.forEach((r) => r.setCollapsed(r !== row && conditionRows.length > 1));
+    updateConditionControls();
+  };
+
+  const settleAfterRemove = () => {
+    if (conditionRows.length <= 1) {
+      if (conditionRows[0]) expand(conditionRows[0]);
+      else updateConditionControls();
+    } else if (activeRow && conditionRows.includes(activeRow)) {
+      expand(activeRow);
+    } else {
+      activeRow = null;
+      conditionRows.forEach((r) => r.setCollapsed(true));
       updateConditionControls();
+    }
+  };
+
+  const addCondition = (condition?: { operator: string; value?: any }, activate = true) => {
+    const row = createConditionRow(
+      condition,
+      operators,
+      dropdownType,
+      () => {
+        const index = conditionRows.findIndex((item) => item.element === row.element);
+        if (index >= 0) conditionRows.splice(index, 1);
+        row.element.remove();
+        if (activeRow === row) activeRow = null;
+        settleAfterRemove();
+      },
+      applyPart
+    );
+    row.editBtn.addEventListener('click', () => {
+      expand(row);
+      focusRow(row);
     });
     conditionRows.push(row);
     conditionsContainer.appendChild(row.element);
-    updateConditionControls();
+    if (activate) expand(row);
+    else updateConditionControls();
   };
 
   const existingConditions = options.existing?.conditions?.length
     ? options.existing.conditions
     : null;
-  existingConditions ? existingConditions.forEach(addCondition) : addCondition();
+  if (existingConditions) {
+    existingConditions.forEach((condition) => addCondition(condition, false));
+    settleAfterRemove();
+  } else {
+    addCondition();
+  }
 
-  const addConditionBtn = createButton('zg-filter-popup__btn zg-filter-popup__btn--add', 'Add condition');
-  addConditionBtn.addEventListener('click', () => addCondition());
+  const addConditionBtn = applyPart(
+    'addBtn',
+    createButton('zg-filter-popup__btn zg-filter-popup__btn--add', 'Add condition')
+  );
+  addConditionBtn.addEventListener('click', () => {
+    addCondition();
+    focusRow(activeRow);
+  });
   popup.appendChild(addConditionBtn);
 
-  const { actions, applyBtn, clearBtn } = createActions();
+  const { actions, applyBtn, clearBtn } = createActions(applyPart);
   popup.appendChild(actions);
 
   const applyFilter = () => {
@@ -69,7 +131,7 @@ export function openFilterPopup(options: FilterPopupOptions): FilterPopupHandle 
     ) as Array<{ operator: string; value: any }>;
 
     if (conditions.length === 0) return;
-    options.setColumnFilter(options.dataCol, conditions, logicRow.select.value as 'AND' | 'OR');
+    options.setColumnFilter(options.dataCol, conditions, matchControl.getValue());
     handle.close();
   };
 
@@ -78,6 +140,7 @@ export function openFilterPopup(options: FilterPopupOptions): FilterPopupHandle 
     options.clearColumnFilter(options.dataCol);
     handle.close();
   });
+  header.closeBtn.addEventListener('click', () => handle.close());
 
   let keyHandler: ((e: KeyboardEvent) => void) | null = (e: KeyboardEvent) => {
     if (e.key !== 'Enter') return;
@@ -124,12 +187,7 @@ export function openFilterPopup(options: FilterPopupOptions): FilterPopupHandle 
     onClose: teardown,
   });
 
-  setTimeout(() => {
-    const first = conditionRows[0];
-    if (!first) return;
-    if (first.valueInput.style.display !== 'none') first.valueInput.focus();
-    else first.operatorSelect.focus();
-  }, 0);
+  setTimeout(() => focusRow(activeRow ?? conditionRows[0] ?? null), 0);
 
   return handle;
 }

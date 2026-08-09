@@ -77,6 +77,21 @@ export type {
   RowStyleResult,
 } from './rendering/row-style/row-style';
 
+// Rendering - Cell styling (per-column primitive + grid-wide provider hook)
+export type {
+  CellStyleProvider,
+  CellStyleContext,
+  CellStyleResult,
+  CellStyleParams,
+  CellClassValue,
+  CellStyleValue,
+} from './rendering/cell-style/cell-style';
+export {
+  toCellClasses,
+  toCellStyle,
+  cellStyleKeyToKebab,
+} from './rendering/cell-style/cell-style';
+
 // Rendering - Column pinning (provider hook; enterprise supplies the implementation)
 export type {
   ColumnPinProvider,
@@ -455,6 +470,11 @@ export type {
   AsyncFilterPluginOptions,
   FilterUIPluginOptions,
 } from './plugins';
+export type {
+  FilterPopupCustomization,
+  FilterPopupPart,
+  FilterPartContext,
+} from './plugins/filter-ui/filter-ui-types';
 export { createLifecyclePlugin } from './plugins';
 export type { LifecyclePluginOptions } from './plugins';
 

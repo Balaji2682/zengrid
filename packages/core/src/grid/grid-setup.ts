@@ -264,6 +264,7 @@ export function installAllPlugins(ctx: SlimGridContext): void {
         getColumnDef: (dataCol: number) => options.columns?.[dataCol],
         getColumnModel: () => columnModel,
         getContainer: () => ctx.container,
+        getFilterPopupCustomization: () => options.filterPopup,
       })
     );
   }

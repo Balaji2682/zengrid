@@ -236,6 +236,70 @@ describe('CellPositioner', () => {
     styled.destroy();
   });
 
+  it('should apply column-level cellClass/cellStyle (static and callback)', () => {
+    const styled = new CellPositioner({
+      scroller,
+      pool,
+      registry,
+      getData: (row, col) => data[row][col],
+      getColumn: (col) =>
+        col === 0
+          ? { field: 'a', header: 'A', cellClass: 'col-static' }
+          : col === 1
+            ? {
+                field: 'b',
+                header: 'B',
+                cellStyle: ({ row }) =>
+                  row === 3 ? { backgroundColor: 'rgb(9, 8, 7)' } : null,
+              }
+            : { field: 'c', header: 'C' },
+    });
+
+    styled.renderVisibleCells(0, 0);
+
+    // Static class on every cell of column 0.
+    expect(pool.acquire('0-0').classList.contains('col-static')).toBe(true);
+    expect(pool.acquire('5-0').classList.contains('col-static')).toBe(true);
+    // Column 1 callback styles only row 3; camelCase is converted.
+    expect(pool.acquire('3-1').style.backgroundColor).toBe('rgb(9, 8, 7)');
+    expect(pool.acquire('2-1').style.backgroundColor).toBe('');
+    // Untouched column carries neither.
+    expect(pool.acquire('0-2').classList.contains('col-static')).toBe(false);
+
+    styled.destroy();
+  });
+
+  it('should apply a grid-wide cellStyleProvider and strip it on refresh', () => {
+    let flag = true;
+    const styled = new CellPositioner({
+      scroller,
+      pool,
+      registry,
+      getData: (row, col) => data[row][col],
+      cellStyleProvider: {
+        getCellStyle: (row, col) =>
+          flag && row === 2 && col === 1
+            ? { classes: ['zg-cell-flagged'], style: { color: 'rgb(1, 2, 3)' } }
+            : undefined,
+      },
+    });
+
+    styled.renderVisibleCells(0, 0);
+    const target = pool.acquire('2-1');
+    expect(target.classList.contains('zg-cell-flagged')).toBe(true);
+    expect(target.style.color).toBe('rgb(1, 2, 3)');
+    // A different cell is untouched.
+    expect(pool.acquire('2-0').classList.contains('zg-cell-flagged')).toBe(false);
+
+    flag = false;
+    styled.refresh();
+    const cleared = pool.acquire('2-1');
+    expect(cleared.classList.contains('zg-cell-flagged')).toBe(false);
+    expect(cleared.style.color).toBe('');
+
+    styled.destroy();
+  });
+
   it('should destroy and cleanup', () => {
     positioner.renderVisibleCells(0, 0);
     positioner.destroy();

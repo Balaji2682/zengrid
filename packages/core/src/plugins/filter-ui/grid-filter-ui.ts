@@ -2,7 +2,11 @@ import type { ColumnDef } from '../../types';
 import type { GridEvents } from '../../events/grid-events';
 import { OverlayManager } from '../../overlay/overlay-manager';
 import { FilterChipBar } from './filter-chip-bar';
-import type { FilterPopupHandle, FilterUIOptions } from './filter-ui-types';
+import type {
+  FilterPopupCustomization,
+  FilterPopupHandle,
+  FilterUIOptions,
+} from './filter-ui-types';
 import { createFieldState } from './field-state-utils';
 import { openFilterPopup } from './filter-popup';
 
@@ -11,11 +15,13 @@ export class GridFilterUI {
   private readonly overlayManager = OverlayManager.getInstance();
   private readonly chipBar: FilterChipBar;
   private popup: FilterPopupHandle | null = null;
+  private customization?: FilterPopupCustomization;
   private filterClickUnsub: (() => void) | null = null;
   private filterChangeUnsub: (() => void) | null = null;
 
   constructor(private readonly options: FilterUIOptions) {
     this.columns = options.columns ?? [];
+    this.customization = options.customization;
     this.chipBar = new FilterChipBar(
       options.container,
       options.getFilterExpression,
@@ -46,6 +52,11 @@ export class GridFilterUI {
     this.chipBar.render();
   }
 
+  setCustomization(customization: FilterPopupCustomization | undefined): void {
+    this.customization = customization;
+    this.closePopup();
+  }
+
   destroy(): void {
     this.closePopup();
     this.filterClickUnsub?.();
@@ -68,6 +79,7 @@ export class GridFilterUI {
       dataCol,
       columnDef,
       existing: this.options.getFilterState().find((filter) => filter.column === dataCol),
+      customization: this.customization,
       setColumnFilter: this.options.setColumnFilter,
       clearColumnFilter: this.options.clearColumnFilter,
       getColumnLabel: (column, index) => this.getColumnLabel(column, index),

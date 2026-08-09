@@ -65,6 +65,7 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
       let pinnedRenderer: PinnedRowsRenderer | null = null;
       let pinUnsub: (() => void) | null = null;
       let rowStyleUnsub: (() => void) | null = null;
+      let cellStyleUnsub: (() => void) | null = null;
       let colPinUnsub: (() => void) | null = null;
       let rafId: number | null = null;
 
@@ -258,6 +259,7 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
             rowHeightManager: rowHeightManager ?? undefined,
             spanProvider: options.spanProvider,
             rowStyleProvider: options.rowStyleProvider,
+            cellStyleProvider: options.cellStyleProvider,
             colPinProvider: options.colPinProvider,
             cellsContainer,
             pinLeftBand: pinLeftBand ?? undefined,
@@ -281,6 +283,10 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
           // Re-render when row styling depends on mutable state and changes.
           rowStyleUnsub =
             options.rowStyleProvider?.subscribe?.(() => positioner?.refresh()) ?? null;
+
+          // Re-render when grid-wide cell styling depends on mutable state.
+          cellStyleUnsub =
+            options.cellStyleProvider?.subscribe?.(() => positioner?.refresh()) ?? null;
 
           // Re-render the body when the pinned set changes live (the header plugin
           // subscribes separately to re-sync its frozen cells).
@@ -666,6 +672,7 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
             if (rafId !== null) cancelAnimationFrame(rafId);
             if (pinUnsub) pinUnsub();
             if (rowStyleUnsub) rowStyleUnsub();
+            if (cellStyleUnsub) cellStyleUnsub();
             if (colPinUnsub) colPinUnsub();
             if (pinnedRenderer) pinnedRenderer.destroy();
             if (positioner) positioner.destroy();
@@ -676,6 +683,7 @@ export function createRenderingPlugin(opts: RenderingPluginOptions): GridPlugin 
             pinnedRenderer = null;
             pinUnsub = null;
             rowStyleUnsub = null;
+            cellStyleUnsub = null;
             colPinUnsub = null;
             rafId = null;
           },

@@ -11,6 +11,8 @@ import type { StateSubscriber } from '@zengrid/shared';
 import type { ColumnDef } from '../../types/column';
 import type { ColumnSpanInfo } from '../row-span/row-span';
 import type { RowStyleResult } from '../row-style/row-style';
+import type { CellStyleParams } from '../cell-style/cell-style';
+import { toCellClasses, toCellStyle } from '../cell-style/cell-style';
 import type { ResolvedColumnPin } from '../col-pin/col-pin';
 import { resolveColumnPin } from '../col-pin/col-pin';
 import { IS_DEV } from '../../reactive/debug';
@@ -69,6 +71,7 @@ export class CellPositioner implements ICellPositioner {
   private rowHeightManager: CellPositionerOptions['rowHeightManager'];
   private spanProvider: CellPositionerOptions['spanProvider'];
   private rowStyleProvider: CellPositionerOptions['rowStyleProvider'];
+  private cellStyleProvider: CellPositionerOptions['cellStyleProvider'];
   private colPinProvider: CellPositionerOptions['colPinProvider'];
   private getPinColumns: CellPositionerOptions['getPinColumns'];
   // The scrolling cells container and the frozen-column sticky bands. Pinned
@@ -89,6 +92,11 @@ export class CellPositioner implements ICellPositioner {
   // The row-style classes/props last applied to each pooled element, so a recycled
   // cell can be stripped of a prior row's styling before the new row's is applied.
   private appliedRowStyle: WeakMap<HTMLElement, { classes: string[]; props: string[] }> =
+    new WeakMap();
+  // The per-cell classes/props last applied to each pooled element (from the
+  // column-level `cellClass`/`cellStyle` and the grid-wide provider), so a
+  // recycled cell is stripped of a prior cell's styling before the new one's.
+  private appliedCellStyle: WeakMap<HTMLElement, { classes: string[]; props: string[] }> =
     new WeakMap();
   // Row-span layout for the current render pass, keyed by column index. Only
   // columns whose ColumnDef supplies a `rowSpan` resolver appear here, and only
@@ -127,6 +135,7 @@ export class CellPositioner implements ICellPositioner {
     this.rowHeightManager = options.rowHeightManager;
     this.spanProvider = options.spanProvider;
     this.rowStyleProvider = options.rowStyleProvider;
+    this.cellStyleProvider = options.cellStyleProvider;
     this.colPinProvider = options.colPinProvider;
     this.getPinColumns = options.getPinColumns;
     this.cellsContainer = options.cellsContainer ?? null;
@@ -563,6 +572,7 @@ export class CellPositioner implements ICellPositioner {
         this.applyOverflowClass(element, column);
         this.applyAlignClass(element, column);
         this.applyRowStyle(element, row);
+        this.applyCellStyle(element, row, col, value, column, rowData);
 
         // CRITICAL: Measure row height even for cached content
         // Cached content still needs height measurement for auto-height columns
@@ -642,6 +652,7 @@ export class CellPositioner implements ICellPositioner {
     this.applyOverflowClass(element, column);
     this.applyAlignClass(element, column);
     this.applyRowStyle(element, row);
+    this.applyCellStyle(element, row, col, value, column, rowData);
 
     // Measure row height if needed (after rendering is complete)
     this.measureRowIfNeeded(row, col, element);
@@ -840,6 +851,87 @@ export class CellPositioner implements ICellPositioner {
 
     if (classes.length > 0 || props.length > 0) {
       this.appliedRowStyle.set(element, { classes: [...classes], props });
+    }
+  }
+
+  /**
+   * Apply per-cell classes/inline-styles onto a single cell — from the column's
+   * declarative `cellClass`/`cellStyle` (a community primitive) and the grid-wide
+   * `cellStyleProvider` (enterprise conditional formatting) combined. Applied
+   * after the row-level styling so cell styling wins on conflicting keys. The
+   * classes/props stamped on a pooled element are tracked so a recycled cell is
+   * stripped of the previous cell's styling before the new one's is set.
+   */
+  private applyCellStyle(
+    element: HTMLElement,
+    row: number,
+    col: number,
+    value: unknown,
+    column: ColumnDef | undefined,
+    rowData: unknown
+  ): void {
+    // Strip styling this pooled element carried from a prior cell.
+    const prev = this.appliedCellStyle.get(element);
+    if (prev) {
+      if (prev.classes.length > 0) element.classList.remove(...prev.classes);
+      for (const prop of prev.props) element.style.removeProperty(prop);
+      this.appliedCellStyle.delete(element);
+    }
+
+    if (!column?.cellClass && !column?.cellStyle && !this.cellStyleProvider) {
+      return;
+    }
+
+    const classes = new Set<string>();
+    const style: Record<string, string> = {};
+
+    // Column-level declarative primitive (community).
+    if (column?.cellClass || column?.cellStyle) {
+      const params: CellStyleParams = {
+        row,
+        col,
+        field: column.field,
+        value,
+        data: rowData,
+      };
+      if (column.cellClass) {
+        const raw =
+          typeof column.cellClass === 'function' ? column.cellClass(params) : column.cellClass;
+        for (const cls of toCellClasses(raw)) classes.add(cls);
+      }
+      if (column.cellStyle) {
+        const raw =
+          typeof column.cellStyle === 'function' ? column.cellStyle(params) : column.cellStyle;
+        Object.assign(style, toCellStyle(raw));
+      }
+    }
+
+    // Grid-wide provider (enterprise). Applied last so it wins on conflicts.
+    if (this.cellStyleProvider) {
+      const result = this.cellStyleProvider.getCellStyle(row, col, {
+        getRowData: (r) => this.getRowData?.(r),
+        getValue: (r, c) => this.getData(r, c),
+        getField: (c) => this.getColumn?.(c)?.field,
+        rowCount: this.scroller.rowCount,
+        colCount: this.scroller.colCount,
+      });
+      if (result) {
+        for (const cls of result.classes ?? []) classes.add(cls);
+        if (result.style) Object.assign(style, result.style);
+      }
+    }
+
+    const classList = [...classes];
+    if (classList.length > 0) element.classList.add(...classList);
+
+    const props: string[] = [];
+    for (const [prop, val] of Object.entries(style)) {
+      element.style.setProperty(prop, val);
+      props.push(prop);
+    }
+
+    if (classList.length > 0 || props.length > 0) {
+      this.appliedCellStyle.set(element, { classes: classList, props });
     }
   }
 

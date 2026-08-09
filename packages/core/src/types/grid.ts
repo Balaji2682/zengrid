@@ -6,8 +6,10 @@ import type { RendererCacheConfig } from '../rendering/cache';
 import type { RowSpanProvider } from '../rendering/row-span/row-span';
 import type { RowPinProvider } from '../rendering/row-pin/row-pin';
 import type { RowStyleProvider } from '../rendering/row-style/row-style';
+import type { CellStyleProvider } from '../rendering/cell-style/cell-style';
 import type { ColumnPinProvider } from '../rendering/col-pin/col-pin';
 import type { ColumnGroupProvider } from '../rendering/col-group/col-group';
+import type { FilterPopupCustomization } from '../plugins/filter-ui/filter-ui-types';
 import type { OperationMode } from '@zengrid/shared';
 import type { CellRef, CellRange } from './cell';
 import type { ColumnDef, SortIcons } from './column';
@@ -52,6 +54,23 @@ export interface GridOptions {
    * callback `rowClass`/`rowStyle` config.
    */
   rowStyleProvider?: RowStyleProvider;
+
+  /**
+   * Grid-wide per-cell class/style provider, applied to the single cell (not the
+   * whole row). Core ships none — grid-wide cell styling is off unless a provider
+   * is supplied. Use `@zengrid/enterprise`'s `cellStyling()` for value-driven
+   * conditional formatting across all columns. Per-column `cellClass`/`cellStyle`
+   * (a community feature on `ColumnDef`) is resolved directly and needs no provider.
+   */
+  cellStyleProvider?: CellStyleProvider;
+
+  /**
+   * Fine-grained customization of the per-column filter popup — scoped
+   * `--zg-filter-*` token overrides, per-part class/style additions, and per-part
+   * DOM slot overrides. Core applies it declaratively; enterprise `filterTheme()`
+   * is the ergonomic runtime path (it drives `grid.filterUI.setCustomization`).
+   */
+  filterPopup?: FilterPopupCustomization;
 
   /**
    * Frozen-column layout provider. Drives which columns stay fixed against the

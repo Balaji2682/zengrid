@@ -6,6 +6,7 @@ import type { HeaderConfig } from './header';
 import type { CellRenderer } from '../rendering/renderers';
 import type { CellEditor } from '../editing/cell-editor.interface';
 import type { CellOverflowConfig } from './grid';
+import type { CellClassValue, CellStyleValue, CellStyleParams } from '../rendering/cell-style/cell-style';
 
 /**
  * Arguments to a column's `valueGetter` — the current row plus a helper to read
@@ -57,6 +58,14 @@ export interface ColumnDef {
   editor?: string | CellEditor<any>;
   editorOptions?: any; // Options passed to editor
   filterable?: boolean;
+  /**
+   * Data type of this column's filter, driving which operators the filter popup
+   * offers and how typed input is parsed. `'text'` (default) → substring/equality
+   * operators; `'number'` → comparison + range (Greater than, Between, …) with
+   * numeric input; `'date'` → date comparisons with a date input. Only affects
+   * the built-in filter UI; the filter engine matches any operator regardless.
+   */
+  filterType?: 'text' | 'number' | 'date';
   resizable?: boolean; // Enable resize for this column (default: true)
   reorderable?: boolean; // Enable drag-to-reorder for this column (default: true)
   minWidth?: number; // Minimum width constraint
@@ -77,6 +86,28 @@ export interface ColumnDef {
    * `@zengrid/enterprise`'s `calculatedColumn()` builds a license-gated one.
    */
   valueGetter?: (params: ValueGetterParams) => unknown;
+
+  /**
+   * CSS class(es) added to this column's body cells. A plain string/array applies
+   * to every cell; a callback is evaluated per cell for value-driven styling.
+   * Classes hook into your stylesheet — target `.zg-cell.your-class`. Community.
+   *
+   * @example
+   * cellClass: ({ value }) => (value < 0 ? 'negative' : null)
+   */
+  cellClass?: CellClassValue | ((params: CellStyleParams) => CellClassValue);
+
+  /**
+   * Inline styles set on this column's body cells. A plain object applies to every
+   * cell; a callback is evaluated per cell. Keys may be camelCase
+   * (`backgroundColor`) or kebab-case (`background-color`); custom properties
+   * (`--x`) pass through as-is. Inline styles win over classes and the theme.
+   * Community.
+   *
+   * @example
+   * cellStyle: ({ value }) => (value < 0 ? { color: '#e5484d' } : null)
+   */
+  cellStyle?: CellStyleValue | ((params: CellStyleParams) => CellStyleValue);
 
   /**
    * Cell overflow configuration for this column

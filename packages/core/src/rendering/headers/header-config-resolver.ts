@@ -59,7 +59,7 @@ export function resolveHeaderConfig(
       filterIndicator: column.filterable
         ? {
             show: true,
-            dropdownType: 'text',
+            dropdownType: column.filterType ?? 'text',
           }
         : undefined,
     };
@@ -104,7 +104,7 @@ export function resolveHeaderConfig(
   } else if (column.filterable) {
     resolved.filterIndicator = {
       show: true,
-      dropdownType: 'text',
+      dropdownType: column.filterType ?? 'text',
     };
   }
 

@@ -6,6 +6,7 @@ import type { IRendererCache } from '../cache';
 import type { RowHeightManager } from '../../features/row-height/row-height-manager';
 import type { RowSpanProvider } from '../row-span/row-span';
 import type { RowStyleProvider } from '../row-style/row-style';
+import type { CellStyleProvider } from '../cell-style/cell-style';
 import type { ColumnPinProvider, ColumnPinInfo } from '../col-pin/col-pin';
 
 /**
@@ -84,6 +85,14 @@ export interface CellPositionerOptions {
    * `@zengrid/enterprise` supplies one via `rowStyling()`.
    */
   rowStyleProvider?: RowStyleProvider;
+
+  /**
+   * Grid-wide per-cell class/style provider (optional). When set, the resolved
+   * classes/styles are applied to the single cell. Combines with each column's
+   * `cellClass`/`cellStyle`. Core ships none; `@zengrid/enterprise` supplies one
+   * via `cellStyling()`.
+   */
+  cellStyleProvider?: CellStyleProvider;
 
   /**
    * Frozen-column layout provider (optional). When set, the columns it reports
